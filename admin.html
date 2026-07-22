@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#00182a">
+  <title>ARUS I Content Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-nav">
+      <a class="admin-brand" href="index.html">
+        <img src="assets/mes-mark.webp" alt="Marine Engineering Society logo">
+        <span><strong>ARUS I Content Dashboard</strong><span>Marine Engineering Society</span></span>
+      </a>
+      <div class="admin-actions">
+        <a class="hide-mobile" href="index.html" target="_blank">View website</a>
+        <button id="exportButton" type="button">Export backup</button>
+        <button id="importButton" type="button">Import backup</button>
+        <input class="hidden" id="importFile" type="file" accept="application/json">
+        <button class="hidden" id="signOutButton" type="button">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="admin-shell">
+    <section class="intro">
+      <div>
+        <h1>Update the website without editing code.</h1>
+        <p>Add or edit team members, partner profiles, announcements, and project details. Local preview mode saves changes in this browser. Supabase mode publishes updates for every visitor.</p>
+      </div>
+      <div class="mode-badge" id="modeBadge">Local preview<span>Changes stay in this browser</span></div>
+    </section>
+
+    <section class="login-panel" id="loginPanel">
+      <div class="notice warn">Supabase is configured. Sign in with an approved administrator account to publish website updates.</div>
+      <div class="login-row" style="margin-top:14px">
+        <input id="loginEmail" type="email" autocomplete="username" placeholder="Admin email">
+        <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Password">
+        <button class="button" id="loginButton" type="button">Sign in</button>
+      </div>
+    </section>
+
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-panel="membersPanel">Team members</button>
+      <button class="tab" data-panel="partnersPanel">Partners</button>
+      <button class="tab" data-panel="newsPanel">Announcements</button>
+      <button class="tab" data-panel="settingsPanel">Project details</button>
+      <button class="tab" data-panel="setupPanel">Publishing setup</button>
+    </div>
+
+    <section class="panel active" id="membersPanel">
+      <div class="panel-grid">
+        <article class="card">
+          <div class="card-head"><div><h2 id="memberFormTitle">Add team member</h2><p>Names, roles, biography, photo, and profile link.</p></div></div>
+          <div class="card-body">
+            <form class="form-grid" id="memberForm">
+              <input type="hidden" name="id">
+              <div class="field"><label>Name</label><input required name="name"></div>
+              <div class="field"><label>Role</label><input required name="role"></div>
+              <div class="field"><label>Department</label><input name="department"></div>
+              <div class="field"><label>Short biography</label><textarea name="bio"></textarea></div>
+              <div class="field"><label>Photo URL</label><input name="image_url" placeholder="https://..."></div>
+              <div class="field"><label>Or upload photo</label><input name="image_file" type="file" accept="image/*"><div class="file-preview hidden" id="memberPreview"></div></div>
+              <div class="field"><label>LinkedIn or profile URL</label><input name="linkedin_url" type="url"></div>
+              <div class="two-col"><div class="field"><label>Display order</label><input name="display_order" type="number" value="10"></div><label class="check"><input name="active" type="checkbox" checked>Visible on website</label></div>
+              <div class="form-actions"><button class="button" type="submit">Save member</button><button class="button secondary" type="button" data-reset="memberForm">Clear form</button></div>
+            </form>
+          </div>
+        </article>
+        <article class="card"><div class="card-head"><div><h2>Current team</h2><p>Click Edit to load a profile into the form.</p></div></div><div class="card-body"><div class="list" id="memberList"></div></div></article>
+      </div>
+    </section>
+
+    <section class="panel" id="partnersPanel">
+      <div class="panel-grid">
+        <article class="card">
+          <div class="card-head"><div><h2 id="partnerFormTitle">Add partner</h2><p>Publish sponsor, technical partner, or supporter information.</p></div></div>
+          <div class="card-body">
+            <form class="form-grid" id="partnerForm">
+              <input type="hidden" name="id">
+              <div class="field"><label>Partner name</label><input required name="name"></div>
+              <div class="field"><label>Tier or relationship</label><select name="tier"><option>Flagship Partner</option><option>Strategic Partner</option><option>Innovation Partner</option><option>Technical Partner</option><option>Project Supporter</option></select></div>
+              <div class="field"><label>Description</label><textarea name="description"></textarea></div>
+              <div class="field"><label>Logo URL</label><input name="logo_url" placeholder="https://..."></div>
+              <div class="field"><label>Or upload logo</label><input name="logo_file" type="file" accept="image/*"><div class="file-preview hidden" id="partnerPreview"></div></div>
+              <div class="field"><label>Website URL</label><input name="website_url" type="url"></div>
+              <div class="two-col"><div class="field"><label>Display order</label><input name="display_order" type="number" value="10"></div><label class="check"><input name="active" type="checkbox" checked>Visible on website</label></div>
+              <div class="form-actions"><button class="button" type="submit">Save partner</button><button class="button secondary" type="button" data-reset="partnerForm">Clear form</button></div>
+            </form>
+          </div>
+        </article>
+        <article class="card"><div class="card-head"><div><h2>Current partners</h2><p>Update partner visibility and recognition.</p></div></div><div class="card-body"><div class="list" id="partnerAdminList"></div></div></article>
+      </div>
+    </section>
+
+    <section class="panel" id="newsPanel">
+      <div class="panel-grid">
+        <article class="card">
+          <div class="card-head"><div><h2 id="newsFormTitle">Add announcement</h2><p>Publish milestones, events, recruitment, or partner news.</p></div></div>
+          <div class="card-body">
+            <form class="form-grid" id="newsForm">
+              <input type="hidden" name="id">
+              <div class="field"><label>Title</label><input required name="title"></div>
+              <div class="field"><label>Summary</label><textarea required name="summary"></textarea></div>
+              <div class="field"><label>Publication date</label><input required name="published_at" type="date"></div>
+              <div class="field"><label>Optional link</label><input name="link_url" type="url"></div>
+              <label class="check"><input name="active" type="checkbox" checked>Visible on website</label>
+              <div class="form-actions"><button class="button" type="submit">Publish announcement</button><button class="button secondary" type="button" data-reset="newsForm">Clear form</button></div>
+            </form>
+          </div>
+        </article>
+        <article class="card"><div class="card-head"><div><h2>Published updates</h2><p>Newest publication date appears first.</p></div></div><div class="card-body"><div class="list" id="newsAdminList"></div></div></article>
+      </div>
+    </section>
+
+    <section class="panel" id="settingsPanel">
+      <article class="card">
+        <div class="card-head"><div><h2>Project details</h2><p>These values appear in the website hero, metrics, and contact links.</p></div></div>
+        <div class="card-body">
+          <form class="settings-grid" id="settingsForm">
+            <div class="field"><label>Project name</label><input name="projectName"></div>
+            <div class="field"><label>Club name</label><input name="clubName"></div>
+            <div class="field"><label>University</label><input name="university"></div>
+            <div class="field"><label>Contact email</label><input name="contactEmail" type="email"></div>
+            <div class="field full"><label>Tagline</label><input name="tagline"></div>
+            <div class="field full"><label>Project summary</label><textarea name="summary"></textarea></div>
+            <div class="field"><label>Campaign target</label><input name="campaignTarget"></div>
+            <div class="field"><label>Engineering budget</label><input name="engineeringBudget"></div>
+            <div class="field"><label>Qualifier</label><input name="qualifier"></div>
+            <div class="field"><label>World final</label><input name="final"></div>
+            <div class="field"><label>Instagram URL</label><input name="instagram" type="url"></div>
+            <div class="field"><label>LinkedIn URL</label><input name="linkedin" type="url"></div>
+            <div class="form-actions full"><button class="button" type="submit">Save project details</button></div>
+          </form>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel" id="setupPanel">
+      <article class="card">
+        <div class="card-head"><div><h2>Publish live updates</h2><p>Complete this once. Afterwards, authorised users can update the live site from this dashboard.</p></div></div>
+        <div class="card-body form-grid">
+          <div class="notice">1. Create a Supabase project. 2. Run <strong>schema.sql</strong> in the SQL editor. 3. Create an Auth user. 4. Add that user's ID to the <strong>admins</strong> table. 5. Paste the project URL and publishable key into <strong>supabase-config.js</strong>. 6. Upload this folder to your web host.</div>
+          <div class="notice warn">Use only the public publishable or anon key in the browser. Never use a service-role key in this website.</div>
+          <div class="field"><label>Current Supabase URL</label><input id="configUrl" readonly></div>
+          <div class="field"><label>Current public key status</label><input id="configKey" readonly></div>
+          <p style="margin:0;color:var(--muted);font-size:.76rem;line-height:1.7">Full setup steps are included in README.md. Local preview mode remains available for testing and content preparation before the database is connected.</p>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="content.js"></script>
+  <script src="supabase-config.js"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

@@ -1,265 +1,253 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Arus 1 — Monaco Energy Boat Challenge 2026</title>
-<meta name="description" content="Arus 1: an electric catamaran built for the Monaco Energy Boat Challenge 2026, Energy Class. Submerged direct-drive pod propulsion, engineered from the waterline down.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --deep:#061626;
-    --navy:#0a2238;
-    --hull:#123a5c;
-    --line:#1d4a6e;
-    --foam:#5cc7dd;
-    --foam-dim:#3a8ea3;
-    --ink:#eaf3f9;
-    --muted:#7f9cb4;
-    --faint:#3d5a74;
-  }
-  *{margin:0;padding:0;box-sizing:border-box}
-  html{scroll-behavior:smooth}
-  body{
-    font-family:'Inter',system-ui,sans-serif;
-    background:var(--deep);
-    color:var(--ink);
-    -webkit-font-smoothing:antialiased;
-    min-height:100vh;
-    overflow-x:hidden;
-  }
-
-  /* depth gradient: sky above the line, water below */
-  .stage{
-    position:relative;
-    min-height:100vh;
-    display:flex;
-    flex-direction:column;
-    background:
-      linear-gradient(180deg, var(--navy) 0%, var(--navy) 46%, var(--hull) 46%, var(--deep) 100%);
-  }
-
-  /* sounder gridlines in the water zone */
-  .stage::before{
-    content:"";
-    position:absolute;
-    left:0;right:0;
-    top:46%;bottom:0;
-    background-image:repeating-linear-gradient(
-      180deg,
-      transparent 0,
-      transparent 47px,
-      rgba(92,199,221,0.06) 47px,
-      rgba(92,199,221,0.06) 48px
-    );
-    pointer-events:none;
-  }
-
-  header{
-    position:relative;
-    z-index:2;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:1.6rem clamp(1.4rem,5vw,4rem);
-  }
-  .mark{
-    font-family:'Space Grotesk',sans-serif;
-    font-weight:700;
-    font-size:1.05rem;
-    letter-spacing:0.14em;
-    color:var(--ink);
-    text-decoration:none;
-  }
-  .mark span{color:var(--foam)}
-  nav a{
-    font-size:0.82rem;
-    letter-spacing:0.08em;
-    color:var(--muted);
-    text-decoration:none;
-    margin-left:1.6rem;
-    transition:color .2s;
-  }
-  nav a:hover,nav a:focus-visible{color:var(--foam)}
-
-  main{
-    position:relative;
-    z-index:2;
-    flex:1;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    padding:0 clamp(1.4rem,5vw,4rem);
-  }
-
-  .eyebrow{
-    display:flex;
-    align-items:center;
-    gap:0.85rem;
-    font-family:'Space Grotesk',sans-serif;
-    font-size:0.78rem;
-    letter-spacing:0.22em;
-    text-transform:uppercase;
-    color:var(--foam);
-    margin-bottom:1.4rem;
-  }
-  .eyebrow::before{
-    content:"";
-    width:34px;height:1px;
-    background:var(--foam);
-    display:inline-block;
-  }
-
-  h1{
-    font-family:'Space Grotesk',sans-serif;
-    font-weight:700;
-    font-size:clamp(3.4rem,13vw,9rem);
-    line-height:0.9;
-    letter-spacing:-0.02em;
-    color:var(--ink);
-  }
-  h1 .unit{color:var(--foam)}
-
-  .thesis{
-    max-width:34ch;
-    margin-top:1.6rem;
-    font-size:clamp(1rem,2.2vw,1.28rem);
-    line-height:1.55;
-    color:var(--muted);
-  }
-  .thesis b{color:var(--ink);font-weight:500}
-
-  /* the waterline */
-  .waterline{
-    position:relative;
-    margin-top:2.6rem;
-    height:1px;
-    background:linear-gradient(90deg,var(--foam) 0%,var(--foam-dim) 40%,transparent 100%);
-  }
-  .waterline::after{
-    content:"WATERLINE — LWL 4.355 m";
-    position:absolute;
-    right:0;top:-1.5rem;
-    font-family:'Space Grotesk',sans-serif;
-    font-size:0.68rem;
-    letter-spacing:0.18em;
-    color:var(--faint);
-  }
-
-  /* spec readout, in the "water" */
-  .readout{
-    display:grid;
-    grid-template-columns:repeat(4,minmax(0,1fr));
-    gap:clamp(1rem,4vw,3rem);
-    margin-top:2.2rem;
-    padding-bottom:3rem;
-  }
-  .spec .val{
-    font-family:'Space Grotesk',sans-serif;
-    font-weight:500;
-    font-size:clamp(1.5rem,4vw,2.4rem);
-    color:var(--ink);
-    line-height:1;
-  }
-  .spec .val small{
-    font-size:0.5em;
-    color:var(--foam);
-    margin-left:0.15em;
-    letter-spacing:0.02em;
-  }
-  .spec .lab{
-    margin-top:0.5rem;
-    font-size:0.74rem;
-    letter-spacing:0.1em;
-    text-transform:uppercase;
-    color:var(--muted);
-  }
-
-  footer{
-    position:relative;
-    z-index:2;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    flex-wrap:wrap;
-    gap:0.8rem;
-    padding:1.3rem clamp(1.4rem,5vw,4rem);
-    border-top:1px solid rgba(92,199,221,0.12);
-    font-size:0.78rem;
-    letter-spacing:0.05em;
-    color:var(--muted);
-  }
-  footer a{color:var(--foam);text-decoration:none}
-  footer a:hover,footer a:focus-visible{text-decoration:underline}
-
-  /* load-in reveal */
-  .rise{opacity:0;transform:translateY(14px);animation:rise .8s cubic-bezier(.2,.7,.2,1) forwards}
-  .d1{animation-delay:.05s}.d2{animation-delay:.18s}.d3{animation-delay:.32s}
-  .d4{animation-delay:.46s}.d5{animation-delay:.6s}
-  @keyframes rise{to{opacity:1;transform:translateY(0)}}
-
-  :focus-visible{outline:2px solid var(--foam);outline-offset:3px;border-radius:2px}
-
-  @media (max-width:640px){
-    nav{display:none}
-    .readout{grid-template-columns:repeat(2,1fr);gap:1.6rem 1.2rem}
-    .waterline::after{display:none}
-  }
-  @media (prefers-reduced-motion:reduce){
-    .rise{animation:none;opacity:1;transform:none}
-    html{scroll-behavior:auto}
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#00182a">
+  <meta name="description" content="UoSM ARUS I is a student-led electric competition boat project by the Marine Engineering Society at the University of Southampton Malaysia.">
+  <title>UoSM ARUS I | Marine Engineering Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="stage">
-    <header class="rise d1">
-      <a href="#" class="mark">ARUS<span>·</span>1</a>
-      <nav>
-        <a href="#">The boat</a>
-        <a href="#">Team</a>
-        <a href="#">Partners</a>
-        <a href="mailto:hello@arus1.example">Contact</a>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header" id="siteHeader">
+    <div class="container nav-wrap">
+      <a class="brand" href="#home" aria-label="UoSM ARUS I home">
+        <img src="assets/mes-mark.webp" alt="Marine Engineering Society logo">
+        <span class="brand-copy">
+          <strong>UoSM ARUS I</strong>
+          <span>Marine Engineering Society</span>
+        </span>
+      </a>
+      <button class="menu-toggle" id="menuToggle" aria-label="Open navigation" aria-expanded="false"><span></span></button>
+      <nav class="site-nav" id="siteNav" aria-label="Main navigation">
+        <a href="#project">Project</a>
+        <a href="#technology">Technology</a>
+        <a href="#roadmap">Roadmap</a>
+        <a href="#team">Team</a>
+        <a href="#partners">Partners</a>
+        <a href="#updates">Updates</a>
+        <a class="nav-cta" href="#contact">Work with us</a>
       </nav>
-    </header>
+    </div>
+  </header>
 
-    <main>
-      <div class="eyebrow rise d2">Monaco Energy Boat Challenge 2026 · Energy Class</div>
-      <h1 class="rise d2">ARUS&nbsp;<span class="unit">1</span></h1>
-      <p class="thesis rise d3">
-        An <b>electric catamaran</b>, engineered from the waterline down.
-        Submerged direct-drive pod propulsion, built to run clean, quiet, and fast
-        across the endurance and sprint courses.
-      </p>
-
-      <div class="waterline rise d4"></div>
-
-      <div class="readout rise d5">
-        <div class="spec">
-          <div class="val">22<small>kn</small></div>
-          <div class="lab">Sprint target</div>
+  <main id="main">
+    <section class="hero" id="home">
+      <div class="hero-wave"></div>
+      <div class="container hero-grid">
+        <div class="hero-copy reveal">
+          <div class="eyebrow">University of Southampton Malaysia</div>
+          <h1>Engineering the next <span>electric race boat.</span></h1>
+          <p class="hero-lead">UoSM ARUS I turns classroom engineering into a full competition programme. Students design, build, integrate, test, and present an energy-efficient boat for the Monaco Energy Boat Challenge pathway.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#project">Explore the project</a>
+            <a class="btn btn-outline" href="#partners">Become a partner</a>
+          </div>
+          <div class="hero-proof" aria-label="Project pillars">
+            <span><i></i>Student-led</span>
+            <span><i></i>Battery-electric</span>
+            <span><i></i>Competition-driven</span>
+            <span><i></i>Industry-connected</span>
+          </div>
         </div>
-        <div class="spec">
-          <div class="val">11<small>kn</small></div>
-          <div class="lab">Endurance cruise</div>
-        </div>
-        <div class="spec">
-          <div class="val">25<small>kW</small></div>
-          <div class="lab">Class power ceiling</div>
-        </div>
-        <div class="spec">
-          <div class="val">250<small>kg</small></div>
-          <div class="lab">Design displacement</div>
+        <div class="hero-visual reveal" aria-hidden="true">
+          <div class="hero-logo-halo"></div>
+          <img class="hero-logo" src="assets/mes-mark.webp" alt="">
+          <div class="hero-badge">
+            <small>Competition pathway</small>
+            <strong>Darwin to Monaco</strong>
+            <span>Asia-Pacific Qualifier in 2027, then the world final after qualification.</span>
+          </div>
         </div>
       </div>
-    </main>
+    </section>
 
-    <footer>
-      <span>Arus 1 · Student engineering team · Energy Class</span>
-      <span>Partnership enquiries — <a href="mailto:hello@arus1.example">hello@arus1.example</a></span>
-    </footer>
-  </div>
+    <div class="metrics">
+      <div class="container metric-grid" id="metricGrid"></div>
+    </div>
+
+    <section class="section" id="project">
+      <div class="container">
+        <div class="section-heading reveal">
+          <div>
+            <div class="section-kicker">The project</div>
+            <h2>One boat. A complete engineering programme.</h2>
+          </div>
+          <p>ARUS I brings together marine, mechanical, electrical, control, manufacturing, safety, finance, and communications work. The team manages the same constraints faced by professional engineering programmes, with real deadlines, design reviews, testing gates, and stakeholder reporting.</p>
+        </div>
+        <div class="story-grid">
+          <article class="story-card story-main reveal">
+            <h3>From concept to competition readiness</h3>
+            <p>The team is developing an energy-efficient competition boat within the Energy Class framework. Work covers rules interpretation, concept selection, detailed design, propulsion integration, battery and electrical systems, cockpit and safety systems, dry testing, water testing, transport, and competition preparation.</p>
+            <p>The programme gives students a platform to apply engineering judgement, document decisions, manage risk, work across disciplines, and communicate progress to sponsors and the public.</p>
+          </article>
+          <div class="story-card values reveal">
+            <article class="value"><span class="num">01</span><h4>Innovation</h4><p>Test ideas through analysis, prototypes, and measured results.</p></article>
+            <article class="value"><span class="num">02</span><h4>Integrity</h4><p>Make decisions through evidence, safety, and clear reporting.</p></article>
+            <article class="value"><span class="num">03</span><h4>Collaboration</h4><p>Connect disciplines, students, academics, and industry partners.</p></article>
+            <article class="value"><span class="num">04</span><h4>Sustainability</h4><p>Build marine capability around energy efficiency and responsible engineering.</p></article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-dark" id="technology">
+      <div class="container">
+        <div class="section-heading reveal">
+          <div>
+            <div class="section-kicker">Engineering scope</div>
+            <h2>Designed as one integrated system.</h2>
+          </div>
+          <p>The boat is not a collection of separate components. Performance, safety, weight, cooling, control, reliability, and manufacturability must work together.</p>
+        </div>
+        <div class="tech-grid">
+          <article class="tech-card reveal"><div class="tech-icon">01</div><h3>Hull and structure</h3><p>Hydrodynamic concept, structural integration, cockpit arrangement, load paths, materials, and manufacturing planning.</p></article>
+          <article class="tech-card reveal"><div class="tech-icon">02</div><h3>Propulsion</h3><p>Motor, controller, propeller, shaft or pod integration, mechanical supports, efficiency, and service access.</p></article>
+          <article class="tech-card reveal"><div class="tech-icon">03</div><h3>Energy and control</h3><p>Battery architecture, BMS, fusing, isolation, low-voltage systems, telemetry, monitoring, and controls.</p></article>
+          <article class="tech-card reveal"><div class="tech-icon">04</div><h3>Safety and testing</h3><p>Protected enclosures, emergency stop, kill cord, charging controls, inspections, dry tests, and controlled water tests.</p></article>
+        </div>
+        <div class="system-note reveal">
+          <strong>Energy Class design constraint</strong>
+          <span>The programme is being developed within competition rules that include a maximum stored-energy limit of 10 kWh. Final technical values remain subject to design review and validation.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-white" id="roadmap">
+      <div class="container">
+        <div class="section-heading reveal">
+          <div>
+            <div class="section-kicker">Roadmap</div>
+            <h2>A phased route from rules to race day.</h2>
+          </div>
+          <p>Each stage produces a decision, drawing, calculation, prototype, test result, or review package. The next stage starts only when the team has enough evidence to move forward.</p>
+        </div>
+        <div class="timeline">
+          <article class="timeline-item reveal"><span class="timeline-dot"></span><span class="timeline-date">September 2026</span><div class="timeline-copy"><strong>Rules review and concept selection</strong><span>Confirm requirements, interfaces, architecture, and the preferred boat concept.</span></div></article>
+          <article class="timeline-item reveal"><span class="timeline-dot"></span><span class="timeline-date">October 2026</span><div class="timeline-copy"><strong>Preliminary design</strong><span>Develop system layouts, initial calculations, budget assumptions, and design trade-offs.</span></div></article>
+          <article class="timeline-item reveal"><span class="timeline-dot"></span><span class="timeline-date">November 2026</span><div class="timeline-copy"><strong>Detailed design</strong><span>Complete technical specifications, integration drawings, procurement plans, and risk controls.</span></div></article>
+          <article class="timeline-item reveal"><span class="timeline-dot"></span><span class="timeline-date">15 January 2027</span><div class="timeline-copy"><strong>Design freeze</strong><span>Approve the build baseline and control later changes through formal review.</span></div></article>
+          <article class="timeline-item reveal"><span class="timeline-dot"></span><span class="timeline-date">February 2027</span><div class="timeline-copy"><strong>Build and integration</strong><span>Manufacture, assemble, wire, inspect, and integrate the complete boat.</span></div></article>
+          <article class="timeline-item reveal"><span class="timeline-dot"></span><span class="timeline-date">March-April 2027</span><div class="timeline-copy"><strong>Dry and water testing</strong><span>Validate safety, controls, reliability, handling, energy use, and competition readiness.</span></div></article>
+          <article class="timeline-item reveal"><span class="timeline-dot"></span><span class="timeline-date">September 2027</span><div class="timeline-copy"><strong>Darwin Asia-Pacific Qualifier</strong><span>Compete for qualification to the Monaco World Final.</span></div></article>
+          <article class="timeline-item reveal"><span class="timeline-dot"></span><span class="timeline-date">Early 2028</span><div class="timeline-copy"><strong>Monaco World Final</strong><span>Attend after successful qualification through the Darwin event.</span></div></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-ocean" id="team">
+      <div class="container">
+        <div class="section-heading reveal">
+          <div>
+            <div class="section-kicker">The people</div>
+            <h2>Students building engineering capability together.</h2>
+          </div>
+          <p>The team combines leadership, technical delivery, finance, communications, safety, and operations. Member profiles can be updated from the content dashboard without editing the page code.</p>
+        </div>
+        <div class="team-grid" id="teamGrid"></div>
+        <div class="advisor-wrap reveal">
+          <h3>Academic advisors</h3>
+          <div class="advisor-grid" id="advisorGrid"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="partners">
+      <div class="container">
+        <div class="section-heading reveal">
+          <div>
+            <div class="section-kicker">Partnership</div>
+            <h2>Support a visible student engineering campaign.</h2>
+          </div>
+          <p>Partners can contribute funding, equipment, software, manufacturing access, technical mentoring, testing support, logistics, or specialist services. Recognition is aligned with the verified value and impact of each contribution.</p>
+        </div>
+        <div class="partners-layout">
+          <aside class="partner-callout reveal">
+            <img src="assets/mes-mark.webp" alt="Marine Engineering Society mark">
+            <h3>Build a named part of the programme.</h3>
+            <p>Support can be connected to propulsion, battery systems, manufacturing, testing, student development, or the Darwin campaign. Partners receive structured progress updates and documented project outcomes.</p>
+            <a class="btn btn-primary" href="#contact">Start a partnership discussion</a>
+          </aside>
+          <div>
+            <div class="partner-list" id="partnerList"></div>
+            <div class="tier-grid reveal">
+              <article class="tier-card"><strong>Flagship Partner</strong><span>Major cash or verified in-kind contribution with project-wide recognition.</span></article>
+              <article class="tier-card"><strong>Strategic Partner</strong><span>Support for a defined workstream, event, or campaign requirement.</span></article>
+              <article class="tier-card"><strong>Innovation Partner</strong><span>Focused support for technology, learning, tools, or technical development.</span></article>
+              <article class="tier-card"><strong>Technical Partner</strong><span>Equipment, software, manufacturing, testing, or engineering expertise valued at fair market value.</span></article>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-dark" id="updates">
+      <div class="container">
+        <div class="section-heading reveal">
+          <div>
+            <div class="section-kicker">Project updates</div>
+            <h2>Follow the build as it develops.</h2>
+          </div>
+          <p>Announcements keep students, sponsors, academics, and supporters informed about technical milestones, events, partnerships, and competition preparation.</p>
+        </div>
+        <div class="news-grid" id="newsGrid"></div>
+      </div>
+    </section>
+
+    <section class="section" id="contact">
+      <div class="container">
+        <div class="cta-panel reveal">
+          <div>
+            <h2>Help move ARUS I from design to water.</h2>
+            <p>Talk with the team about sponsorship, equipment, manufacturing, testing, software, technical mentoring, media, or student collaboration.</p>
+          </div>
+          <div class="cta-actions">
+            <a class="btn btn-light" id="emailButton" href="#">Email the team</a>
+            <a class="btn btn-outline" href="admin.html">Open content dashboard</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="assets/mes-lockup.webp" alt="University of Southampton Malaysia Marine Engineering Society">
+          <p>United by our passion for the oceans and engineering, we navigate challenges, innovate solutions, and lead with purpose.</p>
+        </div>
+        <div class="footer-col">
+          <h3>Project</h3>
+          <a href="#project">About ARUS I</a>
+          <a href="#technology">Engineering scope</a>
+          <a href="#roadmap">Roadmap</a>
+          <a href="#team">Team</a>
+        </div>
+        <div class="footer-col">
+          <h3>Connect</h3>
+          <a href="#partners">Partnership</a>
+          <a href="#updates">Announcements</a>
+          <a id="footerEmail" href="#">Email</a>
+          <a href="admin.html">Content dashboard</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© <span id="year"></span> Marine Engineering Society, University of Southampton Malaysia.</span>
+        <span>UoSM ARUS I is a student engineering project.</span>
+      </div>
+    </div>
+  </footer>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="content.js"></script>
+  <script src="supabase-config.js"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="app.js"></script>
 </body>
 </html>
