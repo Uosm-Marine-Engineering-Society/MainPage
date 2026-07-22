@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arus 1 — Monaco Energy Boat Challenge 2026</title>
+<meta name="description" content="Arus 1: an electric catamaran built for the Monaco Energy Boat Challenge 2026, Energy Class. Submerged direct-drive pod propulsion, engineered from the waterline down.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --deep:#061626;
+    --navy:#0a2238;
+    --hull:#123a5c;
+    --line:#1d4a6e;
+    --foam:#5cc7dd;
+    --foam-dim:#3a8ea3;
+    --ink:#eaf3f9;
+    --muted:#7f9cb4;
+    --faint:#3d5a74;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Inter',system-ui,sans-serif;
+    background:var(--deep);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+
+  /* depth gradient: sky above the line, water below */
+  .stage{
+    position:relative;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    background:
+      linear-gradient(180deg, var(--navy) 0%, var(--navy) 46%, var(--hull) 46%, var(--deep) 100%);
+  }
+
+  /* sounder gridlines in the water zone */
+  .stage::before{
+    content:"";
+    position:absolute;
+    left:0;right:0;
+    top:46%;bottom:0;
+    background-image:repeating-linear-gradient(
+      180deg,
+      transparent 0,
+      transparent 47px,
+      rgba(92,199,221,0.06) 47px,
+      rgba(92,199,221,0.06) 48px
+    );
+    pointer-events:none;
+  }
+
+  header{
+    position:relative;
+    z-index:2;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:1.6rem clamp(1.4rem,5vw,4rem);
+  }
+  .mark{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:1.05rem;
+    letter-spacing:0.14em;
+    color:var(--ink);
+    text-decoration:none;
+  }
+  .mark span{color:var(--foam)}
+  nav a{
+    font-size:0.82rem;
+    letter-spacing:0.08em;
+    color:var(--muted);
+    text-decoration:none;
+    margin-left:1.6rem;
+    transition:color .2s;
+  }
+  nav a:hover,nav a:focus-visible{color:var(--foam)}
+
+  main{
+    position:relative;
+    z-index:2;
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    padding:0 clamp(1.4rem,5vw,4rem);
+  }
+
+  .eyebrow{
+    display:flex;
+    align-items:center;
+    gap:0.85rem;
+    font-family:'Space Grotesk',sans-serif;
+    font-size:0.78rem;
+    letter-spacing:0.22em;
+    text-transform:uppercase;
+    color:var(--foam);
+    margin-bottom:1.4rem;
+  }
+  .eyebrow::before{
+    content:"";
+    width:34px;height:1px;
+    background:var(--foam);
+    display:inline-block;
+  }
+
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:clamp(3.4rem,13vw,9rem);
+    line-height:0.9;
+    letter-spacing:-0.02em;
+    color:var(--ink);
+  }
+  h1 .unit{color:var(--foam)}
+
+  .thesis{
+    max-width:34ch;
+    margin-top:1.6rem;
+    font-size:clamp(1rem,2.2vw,1.28rem);
+    line-height:1.55;
+    color:var(--muted);
+  }
+  .thesis b{color:var(--ink);font-weight:500}
+
+  /* the waterline */
+  .waterline{
+    position:relative;
+    margin-top:2.6rem;
+    height:1px;
+    background:linear-gradient(90deg,var(--foam) 0%,var(--foam-dim) 40%,transparent 100%);
+  }
+  .waterline::after{
+    content:"WATERLINE — LWL 4.355 m";
+    position:absolute;
+    right:0;top:-1.5rem;
+    font-family:'Space Grotesk',sans-serif;
+    font-size:0.68rem;
+    letter-spacing:0.18em;
+    color:var(--faint);
+  }
+
+  /* spec readout, in the "water" */
+  .readout{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:clamp(1rem,4vw,3rem);
+    margin-top:2.2rem;
+    padding-bottom:3rem;
+  }
+  .spec .val{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:500;
+    font-size:clamp(1.5rem,4vw,2.4rem);
+    color:var(--ink);
+    line-height:1;
+  }
+  .spec .val small{
+    font-size:0.5em;
+    color:var(--foam);
+    margin-left:0.15em;
+    letter-spacing:0.02em;
+  }
+  .spec .lab{
+    margin-top:0.5rem;
+    font-size:0.74rem;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+
+  footer{
+    position:relative;
+    z-index:2;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:0.8rem;
+    padding:1.3rem clamp(1.4rem,5vw,4rem);
+    border-top:1px solid rgba(92,199,221,0.12);
+    font-size:0.78rem;
+    letter-spacing:0.05em;
+    color:var(--muted);
+  }
+  footer a{color:var(--foam);text-decoration:none}
+  footer a:hover,footer a:focus-visible{text-decoration:underline}
+
+  /* load-in reveal */
+  .rise{opacity:0;transform:translateY(14px);animation:rise .8s cubic-bezier(.2,.7,.2,1) forwards}
+  .d1{animation-delay:.05s}.d2{animation-delay:.18s}.d3{animation-delay:.32s}
+  .d4{animation-delay:.46s}.d5{animation-delay:.6s}
+  @keyframes rise{to{opacity:1;transform:translateY(0)}}
+
+  :focus-visible{outline:2px solid var(--foam);outline-offset:3px;border-radius:2px}
+
+  @media (max-width:640px){
+    nav{display:none}
+    .readout{grid-template-columns:repeat(2,1fr);gap:1.6rem 1.2rem}
+    .waterline::after{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .rise{animation:none;opacity:1;transform:none}
+    html{scroll-behavior:auto}
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <header class="rise d1">
+      <a href="#" class="mark">ARUS<span>·</span>1</a>
+      <nav>
+        <a href="#">The boat</a>
+        <a href="#">Team</a>
+        <a href="#">Partners</a>
+        <a href="mailto:hello@arus1.example">Contact</a>
+      </nav>
+    </header>
+
+    <main>
+      <div class="eyebrow rise d2">Monaco Energy Boat Challenge 2026 · Energy Class</div>
+      <h1 class="rise d2">ARUS&nbsp;<span class="unit">1</span></h1>
+      <p class="thesis rise d3">
+        An <b>electric catamaran</b>, engineered from the waterline down.
+        Submerged direct-drive pod propulsion, built to run clean, quiet, and fast
+        across the endurance and sprint courses.
+      </p>
+
+      <div class="waterline rise d4"></div>
+
+      <div class="readout rise d5">
+        <div class="spec">
+          <div class="val">22<small>kn</small></div>
+          <div class="lab">Sprint target</div>
+        </div>
+        <div class="spec">
+          <div class="val">11<small>kn</small></div>
+          <div class="lab">Endurance cruise</div>
+        </div>
+        <div class="spec">
+          <div class="val">25<small>kW</small></div>
+          <div class="lab">Class power ceiling</div>
+        </div>
+        <div class="spec">
+          <div class="val">250<small>kg</small></div>
+          <div class="lab">Design displacement</div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <span>Arus 1 · Student engineering team · Energy Class</span>
+      <span>Partnership enquiries — <a href="mailto:hello@arus1.example">hello@arus1.example</a></span>
+    </footer>
+  </div>
+</body>
+</html>
