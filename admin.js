@@ -1,150 +1,466 @@
 (() => {
-  const defaults = structuredClone(window.ARUS_CONTENT);
+  const defaults = window.ARUS_CONTENT || {};
   const config = window.ARUS_SUPABASE || {};
-  const key = "arus-content-v1";
+  const storageKey = "arus-content-v2";
+  const legacyStorageKey = "arus-content-v1";
+  const localSessionKey = "arus-admin-local-session-v1";
+  const siteKeys = ["projectName", "clubName", "navProposalLabel", "university", "contactEmail", "proposalUrl", "footerText", "instagram", "linkedin", "updatedAt"];
   const configured = Boolean(config.url && config.publishableKey && window.supabase);
   const client = configured ? window.supabase.createClient(config.url, config.publishableKey) : null;
   let remoteMode = false;
-  let state = loadLocal() || defaults;
-  const $ = (s) => document.querySelector(s);
-  const $$ = (s) => [...document.querySelectorAll(s)];
-  const esc = (v="") => String(v).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
-  const slug = (v="item") => v.toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") || `item-${Date.now()}`;
-  const initials = (name="") => name.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase();
+  let state;
 
-  function loadLocal(){ try{ const raw=localStorage.getItem(key); return raw?JSON.parse(raw):null; }catch{return null} }
-  function saveLocal(){ localStorage.setItem(key, JSON.stringify(state)); }
-  function toast(message, error=false){ const el=$("#toast"); el.textContent=message; el.className=`toast show${error?" error":""}`; clearTimeout(toast.timer); toast.timer=setTimeout(()=>el.className="toast",2800); }
-  function activeModeLabel(){
-    const badge=$("#modeBadge");
-    if(remoteMode){ badge.innerHTML="Live publishing<span>Supabase database connected</span>"; }
-    else if(configured){ badge.innerHTML="Sign in required<span>Supabase is configured</span>"; }
-    else{ badge.innerHTML="Local preview<span>Changes stay in this browser</span>"; }
+  const $ = (selector) => document.querySelector(selector);
+  const $$ = (selector) => [...document.querySelectorAll(selector)];
+  const esc = (value = "") => String(value).replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
+  const clone = (value) => typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  const initials = (name = "") => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+  const slug = (value = "file") => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "file";
+  const newId = () => globalThis.crypto?.randomUUID?.() || `local-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+  function siteSettings(saved = {}) {
+    const next = { ...(defaults.site || {}) };
+    siteKeys.forEach((key) => {
+      if (saved[key] !== undefined && saved[key] !== null) {
+        next[key] = key === "contactEmail" && saved[key] === "replace-with-team-email@example.com" ? "" : saved[key];
+      }
+    });
+    return next;
   }
 
-  async function loadRemote(){
-    const [members,advisors,partners,announcements,settings]=await Promise.all([
-      client.from("members").select("*").order("display_order"),
-      client.from("advisors").select("*").order("display_order"),
+  function migrateLegacy(legacy) {
+    if (!legacy) return null;
+    return {
+      site: siteSettings(legacy.site),
+      people: [
+        ...(legacy.members || []).map((person) => ({ ...person, kind: "team", profile_url: person.profile_url || person.linkedin_url || "", image_path: person.image_path || "" })),
+        ...(legacy.advisors || []).map((person) => ({ ...person, kind: "advisor", department: person.department || "", bio: person.bio || "", image_url: person.image_url || "", image_path: person.image_path || "", profile_url: person.profile_url || person.linkedin_url || "" }))
+      ],
+      project_updates: legacy.project_updates || legacy.announcements || [],
+      partners: legacy.partners || []
+    };
+  }
+
+  function normalise(value) {
+    const base = clone(defaults);
+    const content = value || base;
+    return {
+      site: siteSettings(content.site),
+      people: content.people || base.people || [],
+      project_updates: content.project_updates || content.announcements || base.project_updates || [],
+      partners: content.partners || base.partners || []
+    };
+  }
+
+  function loadLocal() {
+    try {
+      const current = JSON.parse(localStorage.getItem(storageKey) || "null");
+      if (current) return normalise(current);
+      return normalise(migrateLegacy(JSON.parse(localStorage.getItem(legacyStorageKey) || "null")));
+    } catch {
+      return normalise(null);
+    }
+  }
+
+  function saveLocal() {
+    localStorage.setItem(storageKey, JSON.stringify(state));
+  }
+
+  function toast(message, error = false) {
+    const element = $("#toast");
+    element.textContent = message;
+    element.className = `toast show${error ? " error" : ""}`;
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => { element.className = "toast"; }, 3200);
+  }
+
+  function updateModeBadge() {
+    const badge = $("#modeBadge");
+    badge.innerHTML = remoteMode ? "Live publishing<span>Supabase database connected</span>" : "Local preview<span>Changes stay in this browser</span>";
+  }
+
+  async function loadRemote() {
+    const [people, projectUpdates, partners, settings] = await Promise.all([
+      client.from("people").select("*").order("display_order"),
+      client.from("project_updates").select("*").order("published_at", { ascending: false }),
       client.from("partners").select("*").order("display_order"),
-      client.from("announcements").select("*").order("published_at",{ascending:false}),
-      client.from("site_settings").select("content").eq("id","main").maybeSingle()
+      client.from("site_settings").select("content").eq("id", "main").maybeSingle()
     ]);
-    const error=[members,advisors,partners,announcements,settings].map(x=>x.error).find(Boolean);
-    if(error) throw error;
-    state={site:settings.data?.content||defaults.site,members:members.data||[],advisors:advisors.data||defaults.advisors,partners:partners.data||[],announcements:announcements.data||[]};
+    const error = [people, projectUpdates, partners, settings].map((response) => response.error).find(Boolean);
+    if (error) throw error;
+    state = normalise({ site: settings.data?.content || {}, people: people.data || [], project_updates: projectUpdates.data || [], partners: partners.data || [] });
   }
 
-  function renderAll(){ renderMembers(); renderPartners(); renderNews(); fillSettings(); activeModeLabel(); }
-  function thumb(url,name){ return url?`<img src="${esc(url)}" alt="">`:esc(initials(name)); }
-  function empty(text){ return `<div class="empty">${esc(text)}</div>`; }
-
-  function renderMembers(){
-    const rows=[...(state.members||[])].sort((a,b)=>(a.display_order??999)-(b.display_order??999));
-    $("#memberList").innerHTML=rows.length?rows.map(x=>`<article class="item"><div class="item-thumb">${thumb(x.image_url,x.name)}</div><div><h3>${esc(x.name)}</h3><p>${esc(x.role)}</p><span class="item-meta">${esc(x.department||"Team")} · ${x.active===false?"Hidden":"Visible"}</span></div><div class="item-actions"><button class="icon-btn" data-edit-member="${esc(x.id)}">Edit</button><button class="icon-btn delete" data-delete-member="${esc(x.id)}">Delete</button></div></article>`).join(""):empty("No team members yet.");
-  }
-  function renderPartners(){
-    const rows=[...(state.partners||[])].sort((a,b)=>(a.display_order??999)-(b.display_order??999));
-    $("#partnerAdminList").innerHTML=rows.length?rows.map(x=>`<article class="item"><div class="item-thumb">${thumb(x.logo_url,x.name)}</div><div><h3>${esc(x.name)}</h3><p>${esc(x.description||"")}</p><span class="item-meta">${esc(x.tier)} · ${x.active===false?"Hidden":"Visible"}</span></div><div class="item-actions"><button class="icon-btn" data-edit-partner="${esc(x.id)}">Edit</button><button class="icon-btn delete" data-delete-partner="${esc(x.id)}">Delete</button></div></article>`).join(""):empty("No partners yet.");
-  }
-  function renderNews(){
-    const rows=[...(state.announcements||[])].sort((a,b)=>new Date(b.published_at)-new Date(a.published_at));
-    $("#newsAdminList").innerHTML=rows.length?rows.map(x=>`<article class="item"><div class="item-thumb">NEWS</div><div><h3>${esc(x.title)}</h3><p>${esc(x.summary)}</p><span class="item-meta">${esc(x.published_at)} · ${x.active===false?"Hidden":"Visible"}</span></div><div class="item-actions"><button class="icon-btn" data-edit-news="${esc(x.id)}">Edit</button><button class="icon-btn delete" data-delete-news="${esc(x.id)}">Delete</button></div></article>`).join(""):empty("No announcements yet.");
-  }
-  function fillSettings(){ const f=$("#settingsForm"); Object.entries(state.site||{}).forEach(([k,v])=>{ if(f.elements[k])f.elements[k].value=v??""; }); }
-  function formData(form){ return Object.fromEntries(new FormData(form).entries()); }
-  function setForm(formId,data){ const f=$(formId); Object.entries(data).forEach(([k,v])=>{ if(!f.elements[k])return; if(f.elements[k].type==="checkbox")f.elements[k].checked=v!==false; else if(f.elements[k].type!=="file")f.elements[k].value=v??""; }); f.scrollIntoView({behavior:"smooth",block:"start"}); }
-  function resetForm(id){ const f=document.getElementById(id); f.reset(); if(f.elements.active)f.elements.active.checked=true; if(f.elements.display_order)f.elements.display_order.value=10; if(f.elements.id)f.elements.id.value=""; if(id==="newsForm")f.elements.published_at.value=new Date().toISOString().slice(0,10); }
-
-  async function imageValue(fileInput,urlValue,folder){
-    const file=fileInput?.files?.[0];
-    if(!file)return urlValue||"";
-    if(remoteMode){
-      const extension=file.name.split(".").pop().toLowerCase();
-      const path=`${folder}/${Date.now()}-${slug(file.name.replace(/\.[^.]+$/, ""))}.${extension}`;
-      const upload=await client.storage.from("media").upload(path,file,{upsert:false,contentType:file.type});
-      if(upload.error)throw upload.error;
-      return client.storage.from("media").getPublicUrl(path).data.publicUrl;
-    }
-    if(file.size>1_500_000)throw new Error("For local preview, use an image smaller than 1.5 MB.");
-    return await new Promise((resolve,reject)=>{ const reader=new FileReader(); reader.onload=()=>resolve(reader.result); reader.onerror=reject; reader.readAsDataURL(file); });
+  async function hasAdminAccess() {
+    const result = await client.rpc("is_admin");
+    if (result.error) throw result.error;
+    return result.data === true;
   }
 
-  async function upsert(table,row){
-    if(remoteMode){ const result=await client.from(table).upsert(row,{onConflict:"id"}).select().single(); if(result.error)throw result.error; return result.data; }
-    const list=state[table]; const i=list.findIndex(x=>x.id===row.id); if(i>=0)list[i]=row; else list.push(row); saveLocal(); return row;
-  }
-  async function remove(table,id){
-    if(remoteMode){
-      const result=await client.from(table).delete().eq("id",id);
-      if(result.error)throw result.error;
-      state[table]=state[table].filter(x=>x.id!==id);
+  function showLogin(message = "") {
+    $("#portalView").classList.add("hidden");
+    $("#loginView").classList.remove("hidden");
+    $("#signOutButton").classList.add("hidden");
+    const identity = $("#loginIdentity");
+    const label = $("#loginIdentityLabel");
+    const note = $("#loginNote");
+    const description = $("#loginDescription");
+    identity.value = "";
+    $("#loginPassword").value = "";
+    if (configured) {
+      label.textContent = "Admin email";
+      identity.type = "email";
+      identity.placeholder = "you@example.com";
+      description.textContent = "Sign in with an approved Supabase administrator account.";
+      note.textContent = "Live changes are protected by the project’s administrator policy.";
     } else {
-      state[table]=state[table].filter(x=>x.id!==id);
-      saveLocal();
+      label.textContent = "Username";
+      identity.type = "text";
+      identity.placeholder = "admin";
+      description.textContent = "Use the local preview credentials to edit this browser’s preview.";
+      note.innerHTML = "Local preview only · username <strong>admin</strong> · password <strong>admin</strong>";
     }
+    const messageElement = $("#loginMessage");
+    messageElement.textContent = message;
+    messageElement.classList.toggle("hidden", !message);
   }
 
-  $("#memberForm").addEventListener("submit",async e=>{
-    e.preventDefault(); const f=e.currentTarget; const data=formData(f); const id=data.id||slug(data.name);
-    try{
-      const row={id,name:data.name.trim(),role:data.role.trim(),department:data.department.trim(),bio:data.bio.trim(),image_url:await imageValue(f.elements.image_file,data.image_url,"members"),linkedin_url:data.linkedin_url.trim(),display_order:Number(data.display_order)||10,active:f.elements.active.checked};
-      await upsert("members",row); const i=state.members.findIndex(x=>x.id===id); if(remoteMode){if(i>=0)state.members[i]=row;else state.members.push(row)} resetForm("memberForm"); renderMembers(); toast("Team member saved.");
-    }catch(err){toast(err.message||"Could not save member.",true)}
-  });
-  $("#partnerForm").addEventListener("submit",async e=>{
-    e.preventDefault(); const f=e.currentTarget; const data=formData(f); const id=data.id||slug(data.name);
-    try{
-      const row={id,name:data.name.trim(),tier:data.tier,description:data.description.trim(),logo_url:await imageValue(f.elements.logo_file,data.logo_url,"partners"),website_url:data.website_url.trim(),display_order:Number(data.display_order)||10,active:f.elements.active.checked};
-      await upsert("partners",row); const i=state.partners.findIndex(x=>x.id===id); if(remoteMode){if(i>=0)state.partners[i]=row;else state.partners.push(row)} resetForm("partnerForm"); renderPartners(); toast("Partner saved.");
-    }catch(err){toast(err.message||"Could not save partner.",true)}
-  });
-  $("#newsForm").addEventListener("submit",async e=>{
-    e.preventDefault(); const f=e.currentTarget; const data=formData(f); const id=data.id||`${data.published_at}-${slug(data.title)}`;
-    try{
-      const row={id,title:data.title.trim(),summary:data.summary.trim(),published_at:data.published_at,link_url:data.link_url.trim(),active:f.elements.active.checked};
-      await upsert("announcements",row); const i=state.announcements.findIndex(x=>x.id===id); if(remoteMode){if(i>=0)state.announcements[i]=row;else state.announcements.push(row)} resetForm("newsForm"); renderNews(); toast("Announcement saved.");
-    }catch(err){toast(err.message||"Could not save announcement.",true)}
-  });
-  $("#settingsForm").addEventListener("submit",async e=>{
-    e.preventDefault(); const data=formData(e.currentTarget); const content={...state.site,...data,updatedAt:new Date().toISOString().slice(0,10)};
-    try{
-      if(remoteMode){ const result=await client.from("site_settings").upsert({id:"main",content},{onConflict:"id"}); if(result.error)throw result.error; }
-      state.site=content; if(!remoteMode)saveLocal(); fillSettings(); toast("Project details saved.");
-    }catch(err){toast(err.message||"Could not save project details.",true)}
-  });
-
-  document.addEventListener("click",async e=>{
-    const reset=e.target.closest("[data-reset]"); if(reset){resetForm(reset.dataset.reset);return}
-    const em=e.target.closest("[data-edit-member]"); if(em){const x=state.members.find(v=>v.id===em.dataset.editMember);if(x)setForm("#memberForm",x);return}
-    const ep=e.target.closest("[data-edit-partner]"); if(ep){const x=state.partners.find(v=>v.id===ep.dataset.editPartner);if(x)setForm("#partnerForm",x);return}
-    const en=e.target.closest("[data-edit-news]"); if(en){const x=state.announcements.find(v=>v.id===en.dataset.editNews);if(x)setForm("#newsForm",x);return}
-    const del=e.target.closest("[data-delete-member],[data-delete-partner],[data-delete-news]");
-    if(del){
-      const [table,id]=del.dataset.deleteMember?["members",del.dataset.deleteMember]:del.dataset.deletePartner?["partners",del.dataset.deletePartner]:["announcements",del.dataset.deleteNews];
-      if(confirm("Delete this item?")){try{await remove(table,id);renderAll();toast("Item deleted.")}catch(err){toast(err.message||"Could not delete item.",true)}}
-    }
-  });
-
-  $$(".tab").forEach(tab=>tab.addEventListener("click",()=>{ $$(".tab").forEach(t=>t.classList.remove("active")); $$(".panel").forEach(p=>p.classList.remove("active")); tab.classList.add("active"); document.getElementById(tab.dataset.panel).classList.add("active"); }));
-  $("#exportButton").addEventListener("click",()=>{ const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`arus-content-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href); });
-  $("#importButton").addEventListener("click",()=>$("#importFile").click());
-  $("#importFile").addEventListener("change",async e=>{ const file=e.target.files[0]; if(!file)return; try{ const imported=JSON.parse(await file.text()); if(!imported.site||!Array.isArray(imported.members))throw new Error("This is not a valid ARUS content backup."); state=imported; if(!remoteMode)saveLocal(); renderAll(); toast("Backup imported."); }catch(err){toast(err.message,true)} e.target.value=""; });
-
-  function previewFile(input,previewId){ input.addEventListener("change",()=>{ const file=input.files[0]; const box=$(previewId); if(!file){box.classList.add("hidden");box.innerHTML="";return} const url=URL.createObjectURL(file); box.innerHTML=`<img src="${url}" alt="Preview"><span>${esc(file.name)}</span>`; box.classList.remove("hidden"); }); }
-  previewFile($("#memberForm").elements.image_file,"#memberPreview"); previewFile($("#partnerForm").elements.logo_file,"#partnerPreview");
-
-  async function authInit(){
-    $("#configUrl").value=config.url||"Not configured"; $("#configKey").value=config.publishableKey?"Configured":"Not configured";
-    if(!configured){ remoteMode=false; renderAll(); return; }
-    $("#loginPanel").classList.add("show");
-    const {data}=await client.auth.getSession();
-    remoteMode=Boolean(data.session);
-    if(remoteMode){ await loadRemote(); $("#loginPanel").classList.remove("show"); $("#signOutButton").classList.remove("hidden"); }
+  function showPortal() {
+    $("#loginView").classList.add("hidden");
+    $("#portalView").classList.remove("hidden");
+    $("#signOutButton").classList.remove("hidden");
+    updateModeBadge();
     renderAll();
   }
-  $("#loginButton").addEventListener("click",async()=>{ try{ const email=$("#loginEmail").value.trim(); const password=$("#loginPassword").value; const result=await client.auth.signInWithPassword({email,password}); if(result.error)throw result.error; remoteMode=true; await loadRemote(); $("#loginPanel").classList.remove("show"); $("#signOutButton").classList.remove("hidden"); renderAll(); toast("Signed in. Changes now publish live."); }catch(err){toast(err.message||"Sign-in failed.",true)} });
-  $("#signOutButton").addEventListener("click",async()=>{ await client.auth.signOut(); remoteMode=false; state=loadLocal()||defaults; $("#loginPanel").classList.add("show"); $("#signOutButton").classList.add("hidden"); renderAll(); toast("Signed out. Local preview mode restored."); });
 
-  resetForm("newsForm"); authInit();
+  function thumbnail(url, name) {
+    return url ? `<img src="${esc(url)}" alt="">` : esc(initials(name));
+  }
+
+  function listRows(items, render, emptyText) {
+    return items.length ? items.map(render).join("") : `<div class="empty">${esc(emptyText)}</div>`;
+  }
+
+  function renderPeople() {
+    const rows = [...state.people].sort((a, b) => (a.kind || "team").localeCompare(b.kind || "team") || (Number(a.display_order) || 999) - (Number(b.display_order) || 999));
+    $("#personAdminList").innerHTML = listRows(rows, (person) => `<article class="admin-item"><div class="admin-thumb">${thumbnail(person.image_url, person.name)}</div><div><h3>${esc(person.name)}</h3><p>${esc(person.role)}</p><span class="item-meta">${person.kind === "advisor" ? "Academic advisor" : "Team member"} · ${person.active === false ? "Hidden" : "Visible"} · order ${esc(person.display_order)}</span></div><div class="item-actions"><button type="button" data-edit-person="${esc(person.id)}">Edit</button><button class="delete" type="button" data-delete-table="people" data-delete-id="${esc(person.id)}">Delete</button></div></article>`, "No people yet.");
+  }
+
+  function renderUpdates() {
+    const rows = [...state.project_updates].sort((a, b) => new Date(b.published_at) - new Date(a.published_at));
+    $("#updateAdminList").innerHTML = listRows(rows, (item) => `<article class="admin-item"><div class="admin-thumb">NEWS</div><div><h3>${esc(item.title)}</h3><p>${esc(item.summary)}</p><span class="item-meta">${esc(item.published_at)} · ${item.active === false ? "Hidden" : "Visible"}</span></div><div class="item-actions"><button type="button" data-edit-update="${esc(item.id)}">Edit</button><button class="delete" type="button" data-delete-table="project_updates" data-delete-id="${esc(item.id)}">Delete</button></div></article>`, "No project updates yet.");
+  }
+
+  function renderPartners() {
+    const rows = [...state.partners].sort((a, b) => (Number(a.display_order) || 999) - (Number(b.display_order) || 999));
+    $("#partnerAdminList").innerHTML = listRows(rows, (partner) => `<article class="admin-item"><div class="admin-thumb">${thumbnail(partner.logo_url, partner.name)}</div><div><h3>${esc(partner.name)}</h3><p>${esc(partner.description || "")}</p><span class="item-meta">${esc(partner.tier)} · ${partner.active === false ? "Hidden" : "Visible"} · order ${esc(partner.display_order)}</span></div><div class="item-actions"><button type="button" data-edit-partner="${esc(partner.id)}">Edit</button><button class="delete" type="button" data-delete-table="partners" data-delete-id="${esc(partner.id)}">Delete</button></div></article>`, "No partners yet.");
+  }
+
+  function fillSettings() {
+    const form = $("#settingsForm");
+    siteKeys.filter((key) => key !== "updatedAt").forEach((key) => { form.elements[key].value = state.site[key] || ""; });
+  }
+
+  function renderAll() {
+    renderPeople();
+    renderUpdates();
+    renderPartners();
+    fillSettings();
+    updateModeBadge();
+  }
+
+  function resetForm(id) {
+    const form = document.getElementById(id);
+    form.reset();
+    if (form.elements.id) form.elements.id.value = "";
+    if (form.elements.image_path) form.elements.image_path.value = "";
+    if (form.elements.logo_path) form.elements.logo_path.value = "";
+    if (form.elements.display_order) form.elements.display_order.value = 10;
+    if (form.elements.active) form.elements.active.checked = true;
+    if (id === "updateForm") form.elements.published_at.value = new Date().toISOString().slice(0, 10);
+    const preview = id === "personForm" ? $("#personPreview") : id === "partnerForm" ? $("#partnerPreview") : null;
+    if (preview) { preview.innerHTML = ""; preview.classList.add("hidden"); }
+    if (id === "personForm") $("#personFormTitle").textContent = "Add person";
+    if (id === "partnerForm") $("#partnerFormTitle").textContent = "Add partner";
+    if (id === "updateForm") $("#updateFormTitle").textContent = "Add project update";
+  }
+
+  function previewMedia(target, url, name = "Selected image") {
+    if (!url) { target.innerHTML = ""; target.classList.add("hidden"); return; }
+    target.innerHTML = `<img src="${esc(url)}" alt=""><span>${esc(name)}</span>`;
+    target.classList.remove("hidden");
+  }
+
+  function fillForm(formId, data) {
+    const form = $(formId);
+    Object.entries(data).forEach(([key, value]) => {
+      const field = form.elements[key];
+      if (!field || field.type === "file") return;
+      if (field.type === "checkbox") field.checked = value !== false;
+      else field.value = value ?? "";
+    });
+    if (formId === "#personForm") { $("#personFormTitle").textContent = "Edit person"; previewMedia($("#personPreview"), data.image_url, data.name); }
+    if (formId === "#partnerForm") { $("#partnerFormTitle").textContent = "Edit partner"; previewMedia($("#partnerPreview"), data.logo_url, data.name); }
+    if (formId === "#updateForm") $("#updateFormTitle").textContent = "Edit project update";
+    form.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function dataFromForm(form) {
+    return Object.fromEntries(new FormData(form).entries());
+  }
+
+  async function removeStorage(path) {
+    if (!remoteMode || !path) return;
+    const result = await client.storage.from("media").remove([path]);
+    if (result.error) console.warn("Old media could not be removed.", result.error);
+  }
+
+  async function resolveMedia(fileInput, url, oldUrl, oldPath, folder, id) {
+    const file = fileInput?.files?.[0];
+    const requestedUrl = url.trim();
+    if (!file) {
+      if (!requestedUrl) return { url: "", path: "", oldPath: oldPath || "" };
+      if (requestedUrl === (oldUrl || "").trim()) return { url: requestedUrl, path: oldPath || "", oldPath: "" };
+      return { url: requestedUrl, path: "", oldPath: oldPath || "" };
+    }
+    if (!file.type.startsWith("image/")) throw new Error("Please choose an image file.");
+    const limit = remoteMode ? 5_000_000 : 1_500_000;
+    if (file.size > limit) throw new Error(`Use an image smaller than ${remoteMode ? "5 MB" : "1.5 MB"}.`);
+    if (!remoteMode) {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      return { url: dataUrl, path: "", oldPath: oldPath || "" };
+    }
+    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `${folder}/${id}/${Date.now()}-${slug(file.name.replace(/\.[^.]+$/, ""))}.${extension}`;
+    const result = await client.storage.from("media").upload(path, file, { upsert: false, contentType: file.type });
+    if (result.error) throw result.error;
+    return { url: client.storage.from("media").getPublicUrl(path).data.publicUrl, path, oldPath: oldPath || "" };
+  }
+
+  async function saveSite(site) {
+    const next = siteSettings(site);
+    if (remoteMode) {
+      const result = await client.from("site_settings").upsert({ id: "main", content: next }, { onConflict: "id" });
+      if (result.error) throw result.error;
+    }
+    state.site = next;
+    if (!remoteMode) saveLocal();
+  }
+
+  async function saveRow(table, row) {
+    if (remoteMode) {
+      const result = await client.from(table).upsert(row, { onConflict: "id" }).select().single();
+      if (result.error) throw result.error;
+      row = result.data;
+    }
+    const rows = state[table];
+    const index = rows.findIndex((item) => item.id === row.id);
+    if (index >= 0) rows[index] = row;
+    else rows.push(row);
+    if (!remoteMode) saveLocal();
+    return row;
+  }
+
+  async function deleteRow(table, id) {
+    const row = state[table].find((item) => item.id === id);
+    if (remoteMode) {
+      const result = await client.from(table).delete().eq("id", id);
+      if (result.error) throw result.error;
+    }
+    state[table] = state[table].filter((item) => item.id !== id);
+    if (!remoteMode) saveLocal();
+    await removeStorage(table === "people" ? row?.image_path : table === "partners" ? row?.logo_path : "");
+  }
+
+  function bindTabs() {
+    $$(".tab").forEach((tab) => tab.addEventListener("click", () => {
+      $$(".tab").forEach((item) => { item.classList.remove("active"); item.setAttribute("aria-selected", "false"); });
+      $$(".panel").forEach((panel) => panel.classList.remove("active"));
+      tab.classList.add("active");
+      tab.setAttribute("aria-selected", "true");
+      document.getElementById(tab.dataset.panel).classList.add("active");
+    }));
+  }
+
+  function bindFilePreview(formId, inputName, previewId) {
+    const input = $(formId).elements[inputName];
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (file) previewMedia($(previewId), URL.createObjectURL(file), file.name);
+    });
+  }
+
+  async function signIn(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const identity = form.elements.identity.value.trim();
+    const password = form.elements.password.value;
+    try {
+      if (!configured) {
+        if (identity !== "admin" || password !== "admin") throw new Error("Incorrect username or password.");
+        sessionStorage.setItem(localSessionKey, "true");
+        remoteMode = false;
+        state = loadLocal();
+        showPortal();
+        return;
+      }
+      const result = await client.auth.signInWithPassword({ email: identity, password });
+      if (result.error) throw result.error;
+      if (!(await hasAdminAccess())) {
+        await client.auth.signOut();
+        throw new Error("This account is not approved to manage website content.");
+      }
+      remoteMode = true;
+      await loadRemote();
+      showPortal();
+    } catch (error) {
+      const message = error?.message || "Could not sign in.";
+      $("#loginMessage").textContent = message;
+      $("#loginMessage").classList.remove("hidden");
+    }
+  }
+
+  async function signOut() {
+    if (remoteMode) await client.auth.signOut();
+    sessionStorage.removeItem(localSessionKey);
+    remoteMode = false;
+    state = loadLocal();
+    showLogin();
+  }
+
+  $("#loginForm").addEventListener("submit", signIn);
+  $("#signOutButton").addEventListener("click", signOut);
+
+  $("#settingsForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const data = dataFromForm(event.currentTarget);
+    const next = { ...state.site, ...Object.fromEntries(Object.entries(data).filter(([key]) => siteKeys.includes(key)).map(([key, value]) => [key, value.trim()])), updatedAt: new Date().toISOString() };
+    try {
+      await saveSite(next);
+      fillSettings();
+      toast("Site settings saved.");
+    } catch (error) {
+      toast(error?.message || "Could not save site settings.", true);
+    }
+  });
+
+  $("#updateForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = dataFromForm(form);
+    const row = { id: data.id || newId(), title: data.title.trim(), summary: data.summary.trim(), published_at: data.published_at, link_url: data.link_url.trim(), active: form.elements.active.checked };
+    try {
+      await saveRow("project_updates", row);
+      resetForm("updateForm");
+      renderUpdates();
+      toast("Project update saved.");
+    } catch (error) {
+      toast(error?.message || "Could not save project update.", true);
+    }
+  });
+
+  $("#personForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = dataFromForm(form);
+    const id = data.id || newId();
+    const previous = state.people.find((person) => person.id === id);
+    try {
+      const media = await resolveMedia(form.elements.image_file, data.image_url || "", previous?.image_url || "", previous?.image_path || data.image_path, "people", id);
+      const row = { id, kind: data.kind, name: data.name.trim(), role: data.role.trim(), department: data.department.trim(), bio: data.bio.trim(), image_url: media.url, image_path: media.path, profile_url: data.profile_url.trim(), display_order: Number(data.display_order) || 10, active: form.elements.active.checked };
+      await saveRow("people", row);
+      if (media.oldPath && media.oldPath !== media.path) await removeStorage(media.oldPath);
+      resetForm("personForm");
+      renderPeople();
+      toast("Person saved.");
+    } catch (error) {
+      toast(error?.message || "Could not save person.", true);
+    }
+  });
+
+  $("#partnerForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = dataFromForm(form);
+    const id = data.id || newId();
+    const previous = state.partners.find((partner) => partner.id === id);
+    try {
+      const media = await resolveMedia(form.elements.logo_file, data.logo_url || "", previous?.logo_url || "", previous?.logo_path || data.logo_path, "partners", id);
+      const row = { id, name: data.name.trim(), tier: data.tier, description: data.description.trim(), logo_url: media.url, logo_path: media.path, website_url: data.website_url.trim(), display_order: Number(data.display_order) || 10, active: form.elements.active.checked };
+      await saveRow("partners", row);
+      if (media.oldPath && media.oldPath !== media.path) await removeStorage(media.oldPath);
+      resetForm("partnerForm");
+      renderPartners();
+      toast("Partner saved.");
+    } catch (error) {
+      toast(error?.message || "Could not save partner.", true);
+    }
+  });
+
+  document.addEventListener("click", async (event) => {
+    const reset = event.target.closest("[data-reset]");
+    if (reset) { resetForm(reset.dataset.reset); return; }
+    const editPerson = event.target.closest("[data-edit-person]");
+    if (editPerson) { const row = state.people.find((person) => person.id === editPerson.dataset.editPerson); if (row) fillForm("#personForm", row); return; }
+    const editUpdate = event.target.closest("[data-edit-update]");
+    if (editUpdate) { const row = state.project_updates.find((item) => item.id === editUpdate.dataset.editUpdate); if (row) fillForm("#updateForm", row); return; }
+    const editPartner = event.target.closest("[data-edit-partner]");
+    if (editPartner) { const row = state.partners.find((partner) => partner.id === editPartner.dataset.editPartner); if (row) fillForm("#partnerForm", row); return; }
+    const clearMedia = event.target.closest("[data-clear-media]");
+    if (clearMedia) {
+      const person = clearMedia.dataset.clearMedia === "person";
+      const form = person ? $("#personForm") : $("#partnerForm");
+      form.elements[person ? "image_url" : "logo_url"].value = "";
+      form.elements[person ? "image_file" : "logo_file"].value = "";
+      previewMedia(person ? $("#personPreview") : $("#partnerPreview"), "");
+      return;
+    }
+    const remove = event.target.closest("[data-delete-table]");
+    if (!remove) return;
+    if (!confirm("Delete this item? This cannot be undone.")) return;
+    try {
+      await deleteRow(remove.dataset.deleteTable, remove.dataset.deleteId);
+      renderAll();
+      toast("Item deleted.");
+    } catch (error) {
+      toast(error?.message || "Could not delete item.", true);
+    }
+  });
+
+  bindTabs();
+  bindFilePreview("#personForm", "image_file", "#personPreview");
+  bindFilePreview("#partnerForm", "logo_file", "#partnerPreview");
+  resetForm("updateForm");
+  resetForm("personForm");
+  resetForm("partnerForm");
+
+  async function init() {
+    state = loadLocal();
+    if (!configured) {
+      if (sessionStorage.getItem(localSessionKey) === "true") showPortal();
+      else showLogin();
+      return;
+    }
+    try {
+      const session = await client.auth.getSession();
+      if (session.data.session && await hasAdminAccess()) {
+        remoteMode = true;
+        await loadRemote();
+        showPortal();
+      } else {
+        if (session.data.session) await client.auth.signOut();
+        showLogin();
+      }
+    } catch (error) {
+      console.warn("Could not restore the administrator session.", error);
+      showLogin("Live admin access is unavailable. Check the Supabase setup.");
+    }
+  }
+
+  init();
 })();

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1020" viewBox="0 0 1600 1020" role="img" aria-labelledby="title desc">
+  <title id="title">ARUS I system architecture plate</title>
+  <desc id="desc">An illustrative technical drawing identifying the planned hull, cockpit, battery enclosure, propulsion, steering and telemetry systems. It is not a final chassis rendering.</desc>
+  <rect width="1600" height="1020" fill="#e8f4f6"/>
+  <g stroke="#8ec4cd" stroke-width="2" opacity=".65">
+    <path d="M80 125H1520M80 895H1520M110 80V940M1490 80V940"/>
+    <path d="M80 260H1520M80 510H1520M80 760H1520M400 80V940M800 80V940M1200 80V940" stroke-dasharray="8 12"/>
+  </g>
+  <g fill="none" stroke="#093c50" stroke-linejoin="round">
+    <path d="M250 610C350 552 489 470 684 439C879 408 1117 411 1371 500L1299 605C1170 676 992 716 770 720C557 725 388 694 250 610Z" stroke-width="10"/>
+    <path d="M297 612C478 665 1006 673 1302 596" stroke-width="4"/>
+    <path d="M546 535L678 408L973 414L1103 517L1015 613L664 621Z" stroke-width="7"/>
+    <path d="M673 430L757 343L919 347L972 429" stroke-width="6"/>
+    <path d="M757 343L759 429M919 347L902 430" stroke-width="4"/>
+    <path d="M503 578L544 684M1086 575L1061 675" stroke-width="7"/>
+    <path d="M448 670L621 688M1002 682L1156 653" stroke-width="5"/>
+    <rect x="719" y="515" width="205" height="91" rx="3" stroke-width="5"/>
+    <path d="M926 559H1045L1090 600M719 561H630L576 607" stroke-width="5"/>
+    <circle cx="487" cy="625" r="23" stroke-width="5"/>
+    <circle cx="1135" cy="604" r="23" stroke-width="5"/>
+  </g>
+  <g fill="#07859a" font-family="Arial, sans-serif" font-weight="700" font-size="23" letter-spacing="2">
+    <text x="112" y="145">UoSM ARUS I / SYSTEM ARCHITECTURE</text>
+    <text x="112" y="910">ILLUSTRATIVE PLATE — FINAL DESIGN SUBJECT TO REVIEW</text>
+  </g>
+  <g stroke="#07859a" stroke-width="3" fill="none">
+    <path d="M271 360H507L651 501"/><path d="M1044 291H920L887 506"/><path d="M1300 350H1136L1087 528"/>
+    <path d="M193 790H533L740 607"/><path d="M1243 787H1052L925 607"/>
+  </g>
+  <g fill="#093c50" font-family="Arial, sans-serif" font-size="25">
+    <text x="112" y="337">COCKPIT &amp; SAFETY CELL</text><text x="112" y="369" fill="#5a7180" font-size="20">pilot protection / access</text>
+    <text x="1048" y="267">ENERGY ENCLOSURE</text><text x="1048" y="299" fill="#5a7180" font-size="20">battery / isolation / BMS</text>
+    <text x="1304" y="327">PROPULSION</text><text x="1304" y="359" fill="#5a7180" font-size="20">motor / controller / drive</text>
+    <text x="112" y="784">HULL &amp; STRUCTURE</text><text x="112" y="816" fill="#5a7180" font-size="20">loads / mounting / manufacture</text>
+    <text x="1248" y="781">CONTROL &amp; TELEMETRY</text><text x="1248" y="813" fill="#5a7180" font-size="20">monitoring / pilot interface</text>
+  </g>
+  <g fill="#093c50" font-family="Arial, sans-serif"><text x="718" y="705" font-size="21" text-anchor="middle">PLANNED COMPETITION PLATFORM</text></g>
+</svg>

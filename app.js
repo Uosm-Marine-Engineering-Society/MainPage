@@ -1,23 +1,48 @@
 (() => {
-  const fallback = window.ARUS_CONTENT;
+  const fallback = window.ARUS_CONTENT || {};
   const config = window.ARUS_SUPABASE || {};
-  const storageKey = "arus-content-v1";
+  const storageKey = "arus-content-v2";
+  const legacyStorageKey = "arus-content-v1";
+  const siteKeys = ["projectName", "clubName", "navProposalLabel", "university", "proposalUrl", "contactEmail", "instagram", "linkedin", "footerText", "updatedAt"];
   const $ = (selector) => document.querySelector(selector);
-  const esc = (value = "") => String(value).replace(/[&<>'"]/g, (ch) => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[ch]));
-  const initials = (name = "") => name.split(/\s+/).filter(Boolean).slice(0,2).map(part => part[0]).join("").toUpperCase();
-  const activeSorted = (rows = []) => rows.filter(row => row.active !== false).sort((a,b) => (a.display_order ?? 999) - (b.display_order ?? 999));
+  const $$ = (selector) => [...document.querySelectorAll(selector)];
+  const esc = (value = "") => String(value).replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
+  const clone = (value) => typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  const initials = (name = "") => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
   const formatDate = (value) => {
-    if (!value) return "Update";
-    const date = new Date(`${value}T00:00:00`);
-    return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "long", year: "numeric" }).format(date);
+    const date = new Date(`${value || ""}T00:00:00`);
+    return Number.isNaN(date.getTime()) ? "Project update" : new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "long", year: "numeric" }).format(date);
   };
+
+  function siteSettings(saved = {}) {
+    const next = { ...(fallback.site || {}) };
+    siteKeys.forEach((key) => {
+      if (saved[key] !== undefined && saved[key] !== null) {
+        next[key] = key === "contactEmail" && saved[key] === "replace-with-team-email@example.com" ? "" : saved[key];
+      }
+    });
+    return next;
+  }
+
+  function migrateLegacy(legacy) {
+    if (!legacy) return null;
+    return {
+      site: siteSettings(legacy.site),
+      people: [
+        ...(legacy.members || []).map((person) => ({ ...person, kind: "team", profile_url: person.profile_url || person.linkedin_url || "", image_path: person.image_path || "" })),
+        ...(legacy.advisors || []).map((person) => ({ ...person, kind: "advisor", department: person.department || "", bio: person.bio || "", image_url: person.image_url || "", image_path: person.image_path || "", profile_url: person.profile_url || person.linkedin_url || "" }))
+      ],
+      project_updates: legacy.project_updates || legacy.announcements || [],
+      partners: legacy.partners || []
+    };
+  }
 
   function localContent() {
     try {
-      const saved = localStorage.getItem(storageKey);
-      return saved ? JSON.parse(saved) : null;
-    } catch (error) {
-      console.warn("Could not read local content", error);
+      const current = JSON.parse(localStorage.getItem(storageKey) || "null");
+      if (current) return current;
+      return migrateLegacy(JSON.parse(localStorage.getItem(legacyStorageKey) || "null"));
+    } catch {
       return null;
     }
   }
@@ -26,124 +51,132 @@
     if (!config.url || !config.publishableKey || !window.supabase) return null;
     try {
       const client = window.supabase.createClient(config.url, config.publishableKey);
-      const [members, advisors, partners, announcements, settings] = await Promise.all([
-        client.from("members").select("*").order("display_order"),
-        client.from("advisors").select("*").order("display_order"),
+      const [people, projectUpdates, partners, settings] = await Promise.all([
+        client.from("people").select("*").order("display_order"),
+        client.from("project_updates").select("*").order("published_at", { ascending: false }),
         client.from("partners").select("*").order("display_order"),
-        client.from("announcements").select("*").order("published_at", { ascending: false }),
         client.from("site_settings").select("content").eq("id", "main").maybeSingle()
       ]);
-      const errors = [members, advisors, partners, announcements, settings].map(x => x.error).filter(Boolean);
-      if (errors.length) throw errors[0];
-      return {
-        site: settings.data?.content || fallback.site,
-        members: members.data || [],
-        advisors: advisors.data || fallback.advisors,
-        partners: partners.data || [],
-        announcements: announcements.data || []
-      };
+      const error = [people, projectUpdates, partners, settings].map((response) => response.error).find(Boolean);
+      if (error) throw error;
+      return { site: settings.data?.content || {}, people: people.data || [], project_updates: projectUpdates.data || [], partners: partners.data || [] };
     } catch (error) {
-      console.warn("Supabase content unavailable. Using bundled content.", error);
+      console.warn("Live project content unavailable; using bundled or browser content.", error);
       return null;
     }
   }
 
-  function renderMetrics(site) {
-    $("#metricGrid").innerHTML = [
-      [site.campaignTarget, "Campaign target"],
-      [site.engineeringBudget, "Costed engineering scope"],
-      [site.qualifier, "Asia-Pacific qualifier"],
-      [site.final, "World final, after qualification"]
-    ].map(([value,label]) => `<article class="metric"><strong>${esc(value)}</strong><span>${esc(label)}</span></article>`).join("");
+  function sortedActive(items = []) {
+    return items.filter((item) => item.active !== false).sort((a, b) => (Number(a.display_order) || 999) - (Number(b.display_order) || 999));
   }
 
-  function renderTeam(members) {
-    const rows = activeSorted(members);
-    $("#teamGrid").innerHTML = rows.length ? rows.map(member => {
-      const photo = member.image_url
-        ? `<img src="${esc(member.image_url)}" alt="${esc(member.name)}" loading="lazy">`
-        : `<span class="member-initials">${esc(initials(member.name))}</span>`;
-      const link = member.linkedin_url ? `<a class="member-link" href="${esc(member.linkedin_url)}" target="_blank" rel="noreferrer">View profile</a>` : "";
-      return `<article class="member-card reveal"><div class="member-photo">${photo}</div><div class="member-body"><div class="member-dept">${esc(member.department)}</div><h3>${esc(member.name)}</h3><div class="member-role">${esc(member.role)}</div><p class="member-bio">${esc(member.bio)}</p>${link}</div></article>`;
-    }).join("") : `<div class="partner-empty">Team profiles will be published here.</div>`;
+  function renderUpdates(updates) {
+    const target = $("#updateList");
+    const rows = sortedActive(updates).sort((a, b) => new Date(b.published_at) - new Date(a.published_at)).slice(0, 3);
+    target.innerHTML = rows.length ? rows.map((item) => {
+      const link = item.link_url ? `<a href="${esc(item.link_url)}" target="_blank" rel="noreferrer">Read update <span aria-hidden="true">↗</span></a>` : "";
+      return `<article class="update-item"><time datetime="${esc(item.published_at)}">${esc(formatDate(item.published_at))}</time><h3>${esc(item.title)}</h3><p>${esc(item.summary)}</p>${link}</article>`;
+    }).join("") : `<p class="empty-state">Project updates will appear here.</p>`;
   }
 
-  function renderAdvisors(advisors) {
-    $("#advisorGrid").innerHTML = activeSorted(advisors).map(advisor => `<article class="advisor"><strong>${esc(advisor.name)}</strong><span>${esc(advisor.role)}</span></article>`).join("");
+  function personDepartment(person) {
+    const value = String(person.department || "").toLowerCase();
+    if (value.includes("electrical")) return "Electrical";
+    if (value.includes("mechanical")) return "Mechanical";
+    if (value.includes("leadership") || value.includes("operations") || value.includes("technical")) return "Leadership";
+    return person.department || "Team";
+  }
+
+  function personCard(person, department) {
+    const photo = person.image_url ? `<img src="${esc(person.image_url)}" alt="${esc(person.name)}">` : esc(initials(person.name));
+    const bio = person.bio ? `<p class="person-bio">${esc(person.bio)}</p>` : "";
+    const profile = person.profile_url ? `<a class="person-link" href="${esc(person.profile_url)}" target="_blank" rel="noreferrer">Profile <span aria-hidden="true">↗</span></a>` : "";
+    return `<article class="person-card"><div class="person-photo">${photo}</div><div class="person-body"><span class="person-department">${esc(department)}</span><h3>${esc(person.name)}</h3><p class="person-role">${esc(person.role)}</p>${bio}${profile}</div></article>`;
+  }
+
+  function renderPeople(people) {
+    const team = sortedActive(people.filter((person) => person.kind !== "advisor"));
+    const advisors = sortedActive(people.filter((person) => person.kind === "advisor"));
+    const groupOrder = ["Leadership", "Electrical", "Mechanical"];
+    const groups = new Map();
+    team.forEach((person) => {
+      const department = personDepartment(person);
+      if (!groups.has(department)) groups.set(department, []);
+      groups.get(department).push(person);
+    });
+    const names = [...groupOrder.filter((name) => groups.has(name)), ...[...groups.keys()].filter((name) => !groupOrder.includes(name))];
+    $("#teamList").innerHTML = names.length ? names.map((department) => `<section class="team-group"><h3>${esc(department)}</h3><div class="people-grid">${groups.get(department).map((person) => personCard(person, department)).join("")}</div></section>`).join("") : `<p class="empty-state">Team profiles will appear here.</p>`;
+    $("#advisorWrap").hidden = !advisors.length;
+    $("#advisorList").innerHTML = advisors.map((person) => `<article class="advisor-card"><h3>${esc(person.name)}</h3><p>${esc(person.role || "Academic Advisor")}</p></article>`).join("");
   }
 
   function renderPartners(partners) {
-    const rows = activeSorted(partners);
-    $("#partnerList").innerHTML = rows.length ? rows.map(partner => {
-      const logo = partner.logo_url ? `<img src="${esc(partner.logo_url)}" alt="${esc(partner.name)} logo" loading="lazy">` : esc(initials(partner.name));
-      const link = partner.website_url ? `<a href="${esc(partner.website_url)}" target="_blank" rel="noreferrer">Visit partner</a>` : "";
-      return `<article class="partner-card reveal"><div class="partner-logo">${logo}</div><div><h3>${esc(partner.name)}</h3><span class="partner-tier">${esc(partner.tier)}</span><p>${esc(partner.description)}</p></div>${link}</article>`;
-    }).join("") : `<div class="partner-empty">Partner announcements will appear here.</div>`;
+    const target = $("#partnerList");
+    const rows = sortedActive(partners);
+    target.innerHTML = rows.length ? rows.map((partner) => {
+      const logo = partner.logo_url ? `<img src="${esc(partner.logo_url)}" alt="${esc(partner.name)} logo">` : esc(initials(partner.name));
+      const name = partner.website_url ? `<a href="${esc(partner.website_url)}" target="_blank" rel="noreferrer">${esc(partner.name)}</a>` : esc(partner.name);
+      return `<article class="partner-item"><div class="partner-logo">${logo}</div><div><span class="partner-tier">${esc(partner.tier || "Project partner")}</span><h3>${name}</h3><p>${esc(partner.description || "")}</p></div></article>`;
+    }).join("") : `<p class="empty-state">Partner recognition will appear here as agreements are confirmed.</p>`;
   }
 
-  function renderNews(announcements) {
-    const rows = announcements.filter(row => row.active !== false).sort((a,b) => new Date(b.published_at) - new Date(a.published_at));
-    $("#newsGrid").innerHTML = rows.length ? rows.map(item => {
-      const link = item.link_url ? `<a href="${esc(item.link_url)}" target="_blank" rel="noreferrer">Read more</a>` : `<a href="#contact">Discuss this update</a>`;
-      return `<article class="news-card reveal"><time datetime="${esc(item.published_at)}">${esc(formatDate(item.published_at))}</time><h3>${esc(item.title)}</h3><p>${esc(item.summary)}</p>${link}</article>`;
-    }).join("") : `<div class="partner-empty">No announcements have been published yet.</div>`;
+  function applySite(site) {
+    $$("[data-site-text]").forEach((element) => {
+      const key = element.dataset.siteText;
+      if (site[key]) element.textContent = site[key];
+    });
+    $("#navProposalLabel").textContent = site.navProposalLabel || "View proposal";
+    $("#footerText").textContent = site.footerText || "";
+    document.title = `${site.projectName || "UoSM ARUS I"} | Electric competition boat`;
+    const proposalUrl = site.proposalUrl || fallback.site?.proposalUrl;
+    $$("[data-proposal-link]").forEach((link) => { link.href = proposalUrl; });
+
+    const email = String(site.contactEmail || "").trim();
+    const hasEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    $$(".email-only").forEach((element) => { element.hidden = !hasEmail; });
+    if (hasEmail) {
+      const mailto = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent("UoSM ARUS I enquiry")}`;
+      $$("[data-email-link]").forEach((link) => { link.href = mailto; });
+      $("#contactEmail").textContent = email;
+    }
+
+    $("#footerLinks").innerHTML = [
+      site.instagram ? `<a href="${esc(site.instagram)}" target="_blank" rel="noreferrer">Instagram</a>` : "",
+      site.linkedin ? `<a href="${esc(site.linkedin)}" target="_blank" rel="noreferrer">LinkedIn</a>` : ""
+    ].join("");
   }
 
-  function setupInteractions(site) {
+  function setupNavigation() {
     const header = $("#siteHeader");
     const nav = $("#siteNav");
     const toggle = $("#menuToggle");
-    const email = site.contactEmail || fallback.site.contactEmail;
-    const mailto = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent("UoSM ARUS I enquiry")}`;
-    $("#emailButton").href = mailto;
-    $("#footerEmail").href = mailto;
-    $("#footerEmail").textContent = email;
-    $("#year").textContent = new Date().getFullYear();
-
-    const updateHeader = () => header.classList.toggle("scrolled", window.scrollY > 20);
+    const updateHeader = () => header.classList.toggle("scrolled", window.scrollY > 8);
     updateHeader();
     window.addEventListener("scroll", updateHeader, { passive: true });
-
     toggle.addEventListener("click", () => {
       const open = nav.classList.toggle("open");
-      document.body.classList.toggle("menu-open", open);
       toggle.setAttribute("aria-expanded", String(open));
       toggle.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
     });
-    nav.querySelectorAll("a").forEach(link => link.addEventListener("click", () => {
+    nav.addEventListener("click", (event) => {
+      if (!event.target.closest("a")) return;
       nav.classList.remove("open");
-      document.body.classList.remove("menu-open");
       toggle.setAttribute("aria-expanded", "false");
-    }));
-  }
-
-  function setupReveal() {
-    const elements = document.querySelectorAll(".reveal");
-    if (!("IntersectionObserver" in window)) {
-      elements.forEach(el => el.classList.add("visible"));
-      return;
-    }
-    const observer = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("visible");
-          observer.unobserve(entry.target);
-        }
-      });
-    }, { threshold: .12 });
-    elements.forEach(el => observer.observe(el));
+      toggle.setAttribute("aria-label", "Open navigation");
+    });
   }
 
   async function init() {
     const remote = await remoteContent();
-    const content = remote || localContent() || fallback;
-    renderMetrics(content.site);
-    renderTeam(content.members || []);
-    renderAdvisors(content.advisors || []);
-    renderPartners(content.partners || []);
-    renderNews(content.announcements || []);
-    setupInteractions(content.site);
-    requestAnimationFrame(setupReveal);
+    const saved = localContent();
+    const content = remote || saved || clone(fallback);
+    const site = siteSettings(content.site || {});
+    applySite(site);
+    renderUpdates(content.project_updates || fallback.project_updates || []);
+    renderPeople(content.people || fallback.people || []);
+    renderPartners(content.partners || fallback.partners || []);
+    $("#year").textContent = new Date().getFullYear();
+    setupNavigation();
   }
 
   init();
