@@ -74,11 +74,6 @@
     toast.timer = setTimeout(() => { element.className = "toast"; }, 3200);
   }
 
-  function updateModeBadge() {
-    const badge = $("#modeBadge");
-    badge.innerHTML = remoteMode ? "Live publishing<span>Supabase database connected</span>" : "Local preview<span>Changes stay in this browser</span>";
-  }
-
   async function loadRemote() {
     const [people, projectUpdates, partners, settings] = await Promise.all([
       client.from("people").select("*").order("display_order"),
@@ -129,7 +124,6 @@
     $("#loginView").classList.add("hidden");
     $("#portalView").classList.remove("hidden");
     $("#signOutButton").classList.remove("hidden");
-    updateModeBadge();
     renderAll();
   }
 
@@ -547,7 +541,6 @@
     renderUpdates();
     renderPartners();
     fillSettings();
-    updateModeBadge();
   }
 
   function resetForm(id) {

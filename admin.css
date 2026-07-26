@@ -53,10 +53,8 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(7,133,154,.1
 .login-note { margin: 20px 0 0; padding-top: 18px; border-top: 1px solid var(--line); font-size: 15px !important; }
 .form-message { margin: 18px 0 0 !important; color: var(--danger) !important; font-weight: 700; }
 
-.portal-intro { display: flex; align-items: end; justify-content: space-between; gap: 40px; padding: 34px; border-top: 4px solid var(--teal); background: var(--white); box-shadow: 0 15px 40px rgba(6,44,60,.08); }
+.portal-intro { display: flex; align-items: end; justify-content: flex-start; gap: 40px; padding: 34px; border-top: 4px solid var(--teal); background: var(--white); box-shadow: 0 15px 40px rgba(6,44,60,.08); }
 .portal-intro p:not(.eyebrow) { max-width: 710px; margin-bottom: 0; color: var(--muted); font-size: 18px; }
-.mode-badge { min-width: 170px; padding: 13px 15px; background: var(--pale); color: var(--navy); font-size: 15px; font-weight: 700; text-align: center; }
-.mode-badge span { display: block; margin-top: 3px; color: var(--muted); font-size: 13px; font-weight: 400; }
 .tabs { display: flex; flex-wrap: wrap; gap: 1px; margin-top: 28px; border-bottom: 1px solid var(--line); }
 .tab { padding: 13px 16px; border: 1px solid var(--line); border-bottom: 0; background: #dcebef; color: var(--navy); font-weight: 700; }
 .tab.active { background: var(--white); color: var(--teal); }

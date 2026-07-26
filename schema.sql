@@ -750,8 +750,12 @@ update public.partners
 set description = 'Supporting the team’s marine engineering and competition work.'
 where name = 'HydroComp' and description = 'Supporting the team as it develops its marine engineering capability and competition pathway.';
 
-insert into public.partners (name, tier, description, display_order, active)
-select 'HydroComp', 'Project Supporter', 'Supporting the team’s marine engineering and competition work.', 1, true
+update public.partners
+set logo_url = 'assets/hydrocomp-logo.png'
+where name = 'HydroComp';
+
+insert into public.partners (name, tier, description, logo_url, display_order, active)
+select 'HydroComp', 'Project Supporter', 'Supporting the team’s marine engineering and competition work.', 'assets/hydrocomp-logo.png', 1, true
 where not exists (select 1 from public.partners where partners.name = 'HydroComp');
 
 -- After creating a Supabase Auth user, grant that user access:

@@ -35,6 +35,6 @@ window.ARUS_CONTENT = {
     { id: "mes-student-office", title: "Marine Engineering Society registration submitted", summary: "We submitted our registration in July 2026. ARUS I is our founding project.", published_at: "2026-07-17", link_url: "", active: true }
   ],
   partners: [
-    { id: "hydrocomp", name: "HydroComp", tier: "Project Supporter", description: "Supporting our marine engineering and competition work.", logo_url: "", logo_path: "", website_url: "", display_order: 1, active: true }
+    { id: "hydrocomp", name: "HydroComp", tier: "Project Supporter", description: "Supporting our marine engineering and competition work.", logo_url: "assets/hydrocomp-logo.png", logo_path: "", website_url: "", display_order: 1, active: true }
   ]
 };
