@@ -60,6 +60,16 @@
 
   <main id="main">
     <section class="hero" id="top">
+      <!-- Location-neutral aerial waves by Ruvim M (Pexels video 1918465),
+           locally compressed and made into a seamless, silent loop. The existing
+           Unsplash ocean image remains as the loading and reduced-motion poster. -->
+      <div class="section-media hero-media" aria-hidden="true">
+        <video id="heroVideo" class="hero-video" muted loop playsinline preload="none"
+               poster="assets/images/ocean-surface-960.webp">
+          <source src="assets/video/hero-ocean-waves.mp4" type="video/mp4">
+        </video>
+      </div>
+
       <div class="container hero-grid">
         <div class="hero-copy reveal">
           <p class="eyebrow" data-site-text="university">University of Southampton Malaysia</p>
@@ -76,7 +86,7 @@
             <p class="brief-title">At a glance</p>
             <dl>
               <div><dt>Status</dt><dd>Research, rules review and concept selection</dd></div>
-              <div><dt>Members</dt><dd>9 students · 4 academic advisors</dd></div>
+              <div><dt>Members</dt><dd>10 students · 4 academic advisors</dd></div>
               <div><dt>Founding project</dt><dd>UoSM ARUS I</dd></div>
               <div><dt>Competition</dt><dd>Darwin qualifier · September 2027</dd></div>
             </dl>
@@ -85,13 +95,27 @@
           <div class="contact-card reveal">
             <p class="brief-title">Sponsorship enquiries</p>
             <p class="contact-card-line email-only" hidden><button class="email-copy" type="button" data-email-copy aria-label="Copy email address"></button></p>
-            <p class="contact-card-note" id="contactFallback">Contact us at <button class="email-copy" type="button" data-email-copy aria-label="Copy email address">uosmmes@gmail.com</button>.</p>
+            <p class="contact-card-note" id="contactFallback">Contact us at <button class="email-copy" type="button" data-email-copy aria-label="Copy email address">uosmmes@gmail.com</button></p>
           </div>
         </div>
       </div>
     </section>
 
     <section class="metric-band" aria-label="Key figures">
+      <!-- Decorative water backdrops, used here and on the two navy blocks
+           below. Each band keeps its flat palette colour underneath, so the
+           photograph only ever adds depth: if it fails to load nothing about
+           the layout or the contrast changes.
+
+           The water photographs are Pexels stock (pexels.com/photo/16399201
+           and /5331912), free for commercial use with no attribution required;
+           cropped and re-encoded to WebP in assets/images. -->
+      <div class="section-media" aria-hidden="true">
+        <img data-parallax="6" src="assets/images/open-water.webp"
+             srcset="assets/images/open-water-1000.webp 1000w, assets/images/open-water.webp 2000w"
+             sizes="100vw" width="2000" height="875" alt="" decoding="async">
+      </div>
+
       <div class="container metric-grid">
         <div><span>Costed engineering scope</span><strong>RM81,826</strong></div>
         <div><span>Provisional campaign target</span><strong>RM150,000</strong></div>
@@ -124,8 +148,8 @@
             <dl>
               <div><dt>Class</dt><dd>Energy Class</dd></div>
               <div><dt>Qualifier</dt><dd>Darwin, Australia · September 2027</dd></div>
-              <div><dt>World final</dt><dd>Monaco · early 2028, subject to qualification</dd></div>
-              <div><dt>Programme</dt><dd>June 2026 – April 2028</dd></div>
+              <div><dt>World final</dt><dd>Monaco · 2028, subject to qualification</dd></div>
+              <div><dt>Programme</dt><dd>June 2026 – 2028 (Dates TBC.)</dd></div>
               <div><dt>Current phase</dt><dd>Research, rules review and concept selection</dd></div>
             </dl>
           </aside>
@@ -361,6 +385,9 @@
         </header>
 
         <div class="funding-panel reveal">
+          <div class="section-media" aria-hidden="true">
+            <img src="assets/images/deep-water-940.webp" width="940" height="398" alt="" loading="lazy" decoding="async">
+          </div>
           <div>
             <p class="funding-label">Campaign target</p>
             <p class="funding-figure">RM150,000</p>
@@ -399,10 +426,17 @@
     </section>
 
     <section class="contact" id="contact">
+      <div class="section-media" aria-hidden="true">
+        <img data-parallax="5" src="assets/images/deep-water.webp"
+             srcset="assets/images/deep-water-940.webp 940w, assets/images/deep-water.webp 1800w"
+             sizes="100vw" width="1800" height="762" alt="" loading="lazy" decoding="async">
+      </div>
+
       <div class="container contact-inner">
         <div>
           <h2>Discuss a partnership</h2>
           <p class="contact-email email-only" hidden><button class="email-copy" type="button" data-email-copy aria-label="Copy email address"></button></p>
+          <p class="contact-email contact-email-fallback" id="contactFallbackBottom">Contact us at <button class="email-copy" type="button" data-email-copy aria-label="Copy email address">uosmmes@gmail.com</button>.</p>
         </div>
         <div class="contact-actions">
           <a class="button button-outline" data-proposal-link href="assets/documents/arus-1-sponsorship-proposal-v2.3.pdf" target="_blank" rel="noreferrer">Download proposal</a>

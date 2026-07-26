@@ -9,6 +9,16 @@
   const esc = (value = "") => String(value).replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
   const clone = (value) => typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
   const initials = (name = "") => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+  const advisorProfiles = {
+    "ehsan-mesbahi": "https://www.southamptonmalaysia.edu.my/about/meet-our-team/academic-provost-and-associate-vice-president-international-malaysia",
+    "suan-hui-pu": "https://www.southamptonmalaysia.edu.my/professor-suan-hui-pu",
+    "vun-jack": "https://www.southampton.ac.uk/my/about/staff/cvj1g19.page"
+  };
+  const advisorProfileFor = (person) => {
+    const identity = `${person.id || ""} ${person.name || ""}`.toLowerCase();
+    return Object.entries(advisorProfiles).find(([key]) => identity.includes(key) || identity.includes(key.replaceAll("-", " ")))?.[1] || "";
+  };
+  const instagramMark = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5"/><circle cx="12" cy="12" r="4.1"/><circle cx="17.6" cy="6.6" r="1" class="social-dot"/></svg>';
   const formatDate = (value) => {
     const date = new Date(`${value || ""}T00:00:00`);
     return Number.isNaN(date.getTime()) ? "Project update" : new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "long", year: "numeric" }).format(date);
@@ -108,7 +118,13 @@
       ? names.map((department) => `<section class="team-group"><h3>${esc(department)}</h3><div class="people-grid">${groups.get(department).map(personCard).join("")}</div></section>`).join("")
       : `<p class="empty-state">Team profiles will appear here.</p>`;
     $("#advisorWrap").hidden = !advisors.length;
-    $("#advisorList").innerHTML = advisors.map((person) => `<article class="advisor-card"><h3>${esc(person.name)}</h3><p>${esc(person.role || "Academic Advisor")}</p></article>`).join("");
+    $("#advisorList").innerHTML = advisors.map((person) => {
+      const profileUrl = advisorProfileFor(person);
+      const name = profileUrl
+        ? `<a class="advisor-name" href="${esc(profileUrl)}" target="_blank" rel="noreferrer">${esc(person.name)}</a>`
+        : esc(person.name);
+      return `<article class="advisor-card"><h3>${name}</h3><p>${esc(person.role || "Academic Advisor")}</p></article>`;
+    }).join("");
   }
 
   function partnerLogoUrl(partner) {
@@ -185,6 +201,7 @@
     const email = hasEmail ? configuredEmail : String(fallback.site?.contactEmail || "uosmmes@gmail.com");
     $$(".email-only").forEach((element) => { element.hidden = !hasEmail; });
     $("#contactFallback").hidden = hasEmail;
+    $("#contactFallbackBottom").hidden = hasEmail;
     setupEmailCopy(email);
 
     // content.js stores a date only; the admin writes a full ISO string. Slice to
@@ -192,8 +209,9 @@
     const updated = String(site.updatedAt || "").slice(0, 10);
     $("#siteUpdated").textContent = /^\d{4}-\d{2}-\d{2}$/.test(updated) ? `Site content updated ${formatDate(updated)}` : "";
 
+    const instagram = site.instagram || fallback.site?.instagram || "";
     $("#footerLinks").innerHTML = [
-      site.instagram ? `<a href="${esc(site.instagram)}" target="_blank" rel="noreferrer">Instagram</a>` : "",
+      instagram ? `<a class="footer-social" href="${esc(instagram)}" target="_blank" rel="noreferrer" aria-label="Instagram" title="Instagram">${instagramMark}<span class="visually-hidden">Instagram</span></a>` : "",
       site.linkedin ? `<a href="${esc(site.linkedin)}" target="_blank" rel="noreferrer">LinkedIn</a>` : ""
     ].join("");
   }
@@ -329,15 +347,90 @@
     toggle.hidden = false;
   }
 
+  // The admin setting can only ever disable motion; the OS preference is
+  // checked independently so a site setting can never override it.
+  const motionAllowed = (enabled) => enabled !== false && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // The hero video is deliberately opted into with JS. That leaves its poster
+  // in place for no-JS, reduced-motion and phone-sized views, and prevents a
+  // multi-megabyte background from being fetched when it will not be shown.
+  function setupHeroVideo(enabled) {
+    const video = $("#heroVideo");
+    if (!video) return;
+
+    const desktop = window.matchMedia("(min-width: 761px)");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => {
+      const shouldPlay = enabled !== false
+        && desktop.matches
+        && !reducedMotion.matches
+        && document.visibilityState !== "hidden";
+
+      if (!shouldPlay) {
+        video.pause();
+        return;
+      }
+
+      if (video.preload === "none") {
+        video.preload = "auto";
+        video.load();
+      }
+      video.playbackRate = .82;
+      video.play().catch(() => {
+        // A still poster is the intentional fallback when autoplay is blocked.
+      });
+    };
+
+    sync();
+    desktop.addEventListener?.("change", sync);
+    reducedMotion.addEventListener?.("change", sync);
+    document.addEventListener("visibilitychange", sync);
+  }
+
+  // Each photographic backdrop is laid out taller than the band it fills and drifts
+  // within that overhang as the band crosses the viewport. The travel is a few
+  // percent of the image height — enough to read as depth behind the type,
+  // short of anything you would catch yourself watching. This writes the
+  // `translate` property rather than `transform`, which the water-drift
+  // keyframes own; the two compose instead of overwriting each other.
+  function setupParallax() {
+    const layers = $$(".section-media [data-parallax]");
+    if (!layers.length) return;
+    document.documentElement.classList.add("parallax");
+    let queued = false;
+
+    const update = () => {
+      queued = false;
+      const viewport = window.innerHeight;
+      layers.forEach((layer) => {
+        const band = layer.parentElement.getBoundingClientRect();
+        if (band.bottom < 0 || band.top > viewport) return;
+        // -1 while the band is still below the fold, 0 as its centre passes the
+        // centre of the screen, +1 once it has left over the top.
+        const progress = 1 - (2 * band.bottom) / (viewport + band.height);
+        const shift = Math.max(-1, Math.min(1, progress)) * Number(layer.dataset.parallax);
+        layer.style.translate = `0 ${shift.toFixed(2)}%`;
+      });
+    };
+
+    const onScroll = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+  }
+
   function setupMotion(enabled) {
-    // The admin setting can only ever disable motion; the OS preference below is
-    // checked independently so a site setting can never override it.
     if (enabled === false) {
       document.documentElement.classList.add("no-motion");
       return;
     }
     if (!("IntersectionObserver" in window)) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!motionAllowed(enabled)) return;
 
     const items = $$(".reveal");
     if (!items.length) return;
@@ -386,6 +479,8 @@
 
     setupNavigation();
     setupMotion(site.animations !== false);
+    setupHeroVideo(site.animations !== false);
+    if (motionAllowed(site.animations !== false)) setupParallax();
   }
 
   init();

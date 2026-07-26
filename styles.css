@@ -11,6 +11,9 @@
   --navy-mid: #0d4c62;
   --teal: #07859a;
   --teal-light: #70c2cd;
+  /* Lifted teal for small caps over the water bands: --teal-light only reaches
+     3.3:1 against the lightest part of the photograph, short of AA at 10.5px. */
+  --teal-pale: #b8e2e9;
   --pale: #eef6f8;
   --pale-deep: #dfeef1;
   --paper: #fcfdfd;
@@ -130,9 +133,55 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
 .button-outline { border-color: var(--teal-light); color: var(--white); }
 .button-outline:hover, .button-outline:focus-visible { border-color: var(--white); background: var(--white); color: var(--navy); }
 
+/* ---------- Photographic bands ----------
+   A quiet aerial wave loop adds maritime movement at the right edge of the hero.
+   Open-water texture sits behind the closing call to action and funding panel.
+   Type never sits unprotected on a photograph: the hero copy stays on paper,
+   while the two navy blocks use a scrim mixed from --navy. Every band keeps its
+   flat palette colour as the real background, so one whose image fails to load
+   still preserves the layout and contrast.
+
+   The image is laid out taller than its band; app.js drifts it within that
+   overhang while the band crosses the viewport. */
+
+.section-media { position: absolute; z-index: 0; inset: 0; overflow: hidden; pointer-events: none; }
+/* max-width has to be released here: the global `img` rule would otherwise clamp
+   the horizontal overhang to 100% and the drift would slide the photo off its
+   own edge. */
+.section-media img { position: absolute; inset: -12% -3%; width: 106%; max-width: none; height: 124%; object-fit: cover; }
+.section-media::after { position: absolute; inset: 0; content: ""; }
+
+/* The overhang above carries two independent movements: app.js writes the
+   scroll drift to `translate`, and this writes a slow set-and-drift to
+   `transform`, so the two compose without either having to know about the
+   other. One pass takes most of a minute — it reads as atmosphere rather than
+   an animation. */
+@keyframes backdrop-drift {
+  0%, 100% { transform: translate3d(-1.6%, .5%, 0); }
+  50% { transform: translate3d(1.6%, -.5%, 0); }
+}
+
 /* ---------- Hero ---------- */
 
-.hero { padding: 76px 0 72px; border-bottom: 1px solid var(--line); }
+.hero { position: relative; overflow: hidden; padding: 76px 0 72px; border-bottom: 1px solid var(--line); background: var(--paper); }
+.hero > .container { position: relative; z-index: 1; }
+.hero-media { left: 42%; }
+.hero-media video {
+  position: absolute;
+  inset: -4% -3%;
+  width: 106%;
+  max-width: none;
+  height: 108%;
+  object-fit: cover;
+  object-position: 50% 50%;
+  background: var(--navy);
+  filter: saturate(.9) hue-rotate(8deg) contrast(1.08) brightness(.9);
+}
+.hero-media::after {
+  background:
+    linear-gradient(90deg, var(--paper) 0%, rgba(252, 253, 253, .82) 14%, rgba(252, 253, 253, .1) 53%, rgba(252, 253, 253, 0) 100%),
+    linear-gradient(180deg, rgba(9, 60, 80, .01), rgba(9, 60, 80, .1));
+}
 .hero-grid, .project-intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, .62fr); align-items: start; gap: 80px; }
 .hero-grid > *, .project-intro > * { min-width: 0; }
 .source-panel { margin-top: 56px; }
@@ -161,7 +210,7 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
 .render-placeholder span { color: var(--muted); font-size: 11.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
 .render-frame figcaption { padding-top: 12px; color: var(--muted); font-size: 13.5px; }
 
-.project-brief { border-top: 3px solid var(--teal); background: var(--pale); }
+.project-brief { border-top: 3px solid var(--teal); background: rgba(238, 246, 248, .96); }
 .project-brief .brief-title { margin: 0; padding: 18px 22px 12px; }
 .project-brief dl { margin: 0; }
 .project-brief dl > div { padding: 13px 22px; border-top: 1px solid var(--line); }
@@ -170,18 +219,32 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
 
 /* ---------- Metric band ---------- */
 
-.metric-band { border-bottom: 1px solid var(--line); background: var(--pale); }
+/* The key figures already form a full-bleed strip with hard edges top and
+   bottom, so the open-water texture can add energy without asking for another
+   content block. */
+.metric-band { position: relative; overflow: hidden; background: var(--navy); color: #d9ecf0; }
+.metric-band > .container { position: relative; z-index: 1; }
+.metric-band .section-media img { filter: saturate(1.28) brightness(1.06); }
+.metric-band .section-media::after {
+  background: linear-gradient(101deg, rgba(9, 60, 80, .8) 12%, rgba(9, 60, 80, .5) 56%, rgba(6, 44, 60, .72) 100%);
+}
 .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); }
-.metric-grid > div { min-height: 108px; padding: 24px 24px 24px 0; }
-.metric-grid > div + div { padding-left: 26px; border-left: 1px solid var(--line); }
+.metric-grid > div { min-height: 152px; padding: 36px 24px 36px 0; }
+.metric-grid > div + div { padding-left: 26px; border-left: 1px solid rgba(112, 194, 205, .3); }
 .metric-grid span, .metric-grid strong { display: block; }
-.metric-grid span { margin-bottom: 9px; color: var(--muted); font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
-.metric-grid strong { color: var(--navy); font-size: 22px; font-weight: 700; line-height: 1.2; letter-spacing: -.01em; }
+.metric-grid span { margin-bottom: 9px; color: var(--teal-pale); font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.metric-grid strong { color: var(--white); font-size: 22px; font-weight: 700; line-height: 1.2; letter-spacing: -.01em; }
 
 /* ---------- Section scaffolding ---------- */
 
 .section { padding: 104px 0; scroll-margin-top: 88px; }
-.section-tint { border-block: 1px solid var(--line); background: var(--pale); }
+.section-tint {
+  border-block: 1px solid var(--line);
+  background:
+    radial-gradient(ellipse 78% 52% at 8% 2%, rgba(255, 255, 255, .82), transparent 66%),
+    radial-gradient(ellipse 65% 54% at 96% 96%, rgba(112, 194, 205, .09), transparent 72%),
+    linear-gradient(150deg, #f1f8f9 0%, var(--pale) 52%, #eaf4f6 100%);
+}
 .section-head { margin-bottom: 52px; padding-bottom: 24px; border-bottom: 1px solid var(--navy); }
 .section-head h2 { margin-bottom: 0; }
 .section-head .lead { margin-top: 18px; }
@@ -295,6 +358,8 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
 .advisor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 34px; }
 .advisor-card { padding-top: 16px; border-top: 1px solid var(--line); }
 .advisor-card h3 { margin: 0; font-size: 16px; }
+.advisor-name { color: inherit; text-decoration: none; }
+.advisor-name:hover, .advisor-name:focus-visible { color: inherit; text-decoration: none; }
 .advisor-card p { margin: 5px 0 0; color: var(--muted); font-size: 13.5px; }
 
 /* ---------- Updates ---------- */
@@ -310,14 +375,19 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
 /* ---------- Sponsorship ---------- */
 
 .funding-panel {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 40px;
   padding: 32px;
+  overflow: hidden;
   background: var(--navy);
   color: #d9ecf0;
 }
+.funding-panel > :not(.section-media) { position: relative; z-index: 1; }
+.funding-panel .section-media img { filter: saturate(1.25) brightness(1.1); }
+.funding-panel .section-media::after { background: linear-gradient(103deg, rgba(9, 60, 80, .88) 26%, rgba(9, 60, 80, .62) 100%); }
 .funding-panel .funding-label { color: var(--teal-light); }
 .funding-figure { margin: 0 0 12px; color: var(--white); font-size: 34px; font-weight: 700; line-height: 1.1; letter-spacing: -.025em; }
 .funding-figure span { color: var(--teal-light); font-size: 15px; font-weight: 600; letter-spacing: 0; }
@@ -341,7 +411,12 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
 
 /* ---------- Contact ---------- */
 
-.contact { padding: 76px 0; background: var(--navy); color: #d9ecf0; }
+.contact { position: relative; padding: 76px 0; background: var(--navy); color: #d9ecf0; }
+.contact > .container { position: relative; z-index: 1; }
+.contact .section-media img { filter: saturate(1.25) brightness(1.1); }
+.contact .section-media::after {
+  background: linear-gradient(101deg, rgba(9, 60, 80, .86) 18%, rgba(9, 60, 80, .55) 62%, rgba(6, 44, 60, .68) 100%);
+}
 .contact h2, .contact h3 { color: var(--white); }
 .contact .section-label { color: var(--teal-light); }
 .contact h2 { margin-bottom: 16px; }
@@ -368,6 +443,10 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
 .footer-meta { display: flex; align-items: center; gap: 16px; }
 .footer-links { display: flex; gap: 14px; }
 .footer-links a, .footer-admin { color: var(--teal-light); font-weight: 650; text-underline-offset: 3px; }
+.footer-links .footer-social { display: inline-grid; width: 26px; height: 26px; place-items: center; color: var(--teal-light); text-decoration: none; }
+.footer-social svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+.footer-social .social-dot { fill: currentColor; stroke: none; }
+.footer-social:hover, .footer-social:focus-visible { color: var(--white); text-decoration: none; }
 .footer-admin { padding-left: 16px; border-left: 1px solid rgba(112, 194, 205, .35); color: #7f9fa9 !important; font-size: 11px; font-weight: 500; letter-spacing: .04em; opacity: .65; }
 .footer-admin:hover { color: var(--teal-light) !important; }
 
@@ -377,6 +456,15 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
 
 .motion .reveal { opacity: 0; transform: translateY(14px); }
 .motion .reveal.in { opacity: 1; transform: none; transition: opacity .55s var(--ease), transform .55s var(--ease); }
+
+/* Set by app.js only while it is actually driving the backdrops. Without it the
+   water is simply still — no drift, and no compositing layer promoted for
+   nothing. This is also what keeps the animation out of reduced-motion, which
+   the @media block below cannot do on its own since it only stops transitions. */
+.parallax .section-media img {
+  animation: backdrop-drift 52s ease-in-out infinite;
+  will-change: transform, translate;
+}
 
 /* Set when the admin turns animations off. Mirrors the reduced-motion block
    below so "off" also covers smooth scrolling and hover transitions. */
@@ -389,6 +477,8 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
   .site-nav, .nav-links { gap: 16px; }
   .site-nav a { font-size: 13.5px; }
   .hero-grid, .project-intro { grid-template-columns: 1fr; gap: 44px; }
+  .hero-media { left: 40%; opacity: .62; }
+  .hero-media::after { background: linear-gradient(90deg, var(--paper) 0%, rgba(252, 253, 253, .86) 38%, rgba(252, 253, 253, .22) 78%, rgba(252, 253, 253, .04) 100%); }
   .def-grid { grid-template-columns: repeat(2, 1fr); }
   .funding-panel { grid-template-columns: 1fr; align-items: start; gap: 26px; }
   .advisor-grid { grid-template-columns: repeat(2, 1fr); }
@@ -422,6 +512,7 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
   .nav-cta { margin-top: 6px; text-align: center; }
 
   .hero { padding: 48px 0 52px; }
+  .hero-media { display: none; }
   h1 { font-size: clamp(36px, 10vw, 48px); }
   h2 { font-size: 29px; }
   .intro { font-size: 18px; }
@@ -431,7 +522,7 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
   .metric-grid > div { min-height: 0; padding: 18px 16px 18px 0; }
   .metric-grid > div + div { padding-left: 16px; }
   .metric-grid > div:nth-child(odd) { padding-left: 0; border-left: 0; }
-  .metric-grid > div:nth-child(n + 3) { border-top: 1px solid var(--line); }
+  .metric-grid > div:nth-child(n + 3) { border-top: 1px solid rgba(112, 194, 205, .3); }
   .metric-grid strong { font-size: 19px; }
 
   .section { padding: 58px 0; scroll-margin-top: 72px; }
@@ -470,7 +561,13 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
      prints in full. */
   .cost-items[hidden] { display: table-row-group !important; }
   .row-toggle::after { display: none; }
-  .site-header, .menu-toggle, .skip-link, .hero-actions, .contact-actions { display: none; }
+  .site-header, .menu-toggle, .skip-link, .hero-actions, .contact-actions, .section-media { display: none; }
+  /* Printers drop backgrounds, which would leave the metric band's light type
+     on white paper. Put it back on the page palette instead. */
+  .metric-band { background: none; }
+  .metric-grid span { color: var(--muted); }
+  .metric-grid strong { color: var(--navy); }
+  .metric-grid > div + div { border-left-color: var(--line); }
   body { font-size: 12pt; }
   .section { padding: 24pt 0; }
   .table-wrap { overflow: visible; }

@@ -6,7 +6,7 @@ window.ARUS_CONTENT = {
     university: "University of Southampton Malaysia",
     proposalUrl: "assets/documents/arus-1-sponsorship-proposal-v2.3.pdf",
     contactEmail: "uosmmes@gmail.com",
-    instagram: "",
+    instagram: "https://www.instagram.com/uosm_mes/",
     linkedin: "",
     footerText: "Marine Engineering Society · University of Southampton Malaysia",
     animations: true,
@@ -24,9 +24,9 @@ window.ARUS_CONTENT = {
     { id: "ng-jen-shen", kind: "team", name: "Ng Jen Shen", role: "Head of Mechanical", department: "Mechanical", bio: "Mechanical layout, structure, propulsion mounting, steering and manufacturability.", image_url: "", image_path: "", profile_url: "", display_order: 9, active: true },
     { id: "christopher-hall", kind: "team", name: "Christopher Hall", role: "Mechanical Engineer", department: "Mechanical", bio: "Mechanical design, manufacturing, assembly, testing and documentation.", image_url: "", image_path: "", profile_url: "", display_order: 10, active: true },
     { id: "kuhaneshwara-nadaraja", kind: "team", name: "Kuhaneshwara Nadaraja", role: "Mechanical Engineer", department: "Mechanical", bio: "Mechanical design, manufacturing, assembly, testing and documentation.", image_url: "", image_path: "", profile_url: "", display_order: 11, active: true },
-    { id: "ehsan-mesbahi", kind: "advisor", name: "Professor Ehsan Mesbahi", role: "Academic Advisor", department: "", bio: "", image_url: "", image_path: "", profile_url: "", display_order: 1, active: true },
-    { id: "suan-hui-pu", kind: "advisor", name: "Professor Suan Hui Pu", role: "Academic Advisor", department: "", bio: "", image_url: "", image_path: "", profile_url: "", display_order: 2, active: true },
-    { id: "vun-jack", kind: "advisor", name: "Dr. Vun Jack", role: "Academic Advisor", department: "", bio: "", image_url: "", image_path: "", profile_url: "", display_order: 3, active: true },
+    { id: "ehsan-mesbahi", kind: "advisor", name: "Professor Ehsan Mesbahi", role: "Academic Advisor", department: "", bio: "", image_url: "", image_path: "", profile_url: "https://www.southamptonmalaysia.edu.my/about/meet-our-team/academic-provost-and-associate-vice-president-international-malaysia", display_order: 1, active: true },
+    { id: "suan-hui-pu", kind: "advisor", name: "Professor Suan Hui Pu", role: "Academic Advisor", department: "", bio: "", image_url: "", image_path: "", profile_url: "https://www.southamptonmalaysia.edu.my/professor-suan-hui-pu", display_order: 2, active: true },
+    { id: "vun-jack", kind: "advisor", name: "Dr. Vun Jack", role: "Academic Advisor", department: "", bio: "", image_url: "", image_path: "", profile_url: "https://www.southampton.ac.uk/my/about/staff/cvj1g19.page", display_order: 3, active: true },
     { id: "ana-mesbahi", kind: "advisor", name: "Dr. Ana Mesbahi", role: "Academic Advisor", department: "", bio: "", image_url: "", image_path: "", profile_url: "", display_order: 4, active: true }
   ],
   project_updates: [
