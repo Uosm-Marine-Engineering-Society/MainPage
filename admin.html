@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#093c50">
-  <title>ARUS I Admin Portal</title>
+  <title>MES Website Admin</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="admin.css">
 </head>
@@ -13,7 +13,7 @@
     <div class="admin-nav">
       <a class="admin-brand" href="index.html">
         <img src="assets/mes-mark.webp" width="48" height="48" alt="Marine Engineering Society logo">
-        <span><strong>ARUS I Admin</strong><small>Marine Engineering Society</small></span>
+        <span><strong>MES Admin</strong><small>University of Southampton Malaysia</small></span>
       </a>
       <div class="admin-actions">
         <a href="index.html" target="_blank" rel="noreferrer">View website</a>
@@ -25,7 +25,7 @@
   <main class="admin-shell">
     <section class="login-view" id="loginView" aria-labelledby="loginTitle">
       <div class="login-card">
-        <p class="eyebrow">ARUS I website</p>
+        <p class="eyebrow">MES website</p>
         <h1 id="loginTitle">Admin login</h1>
         <p id="loginDescription">Use the local preview credentials to edit this browser’s preview.</p>
         <form id="loginForm" class="form-stack">
@@ -40,7 +40,7 @@
 
     <section class="portal-view hidden" id="portalView" aria-label="Website content management">
       <div class="portal-intro">
-        <div><p class="eyebrow">ARUS I website</p><h1>Website admin</h1><p>Manage project updates, people, partners and site settings.</p></div>
+        <div><p class="eyebrow">MES website</p><h1>Website admin</h1><p>Manage project updates, people, partners and site settings.</p></div>
         <div class="mode-badge" id="modeBadge">Local preview<span>Changes stay in this browser</span></div>
       </div>
 
@@ -48,6 +48,7 @@
         <button class="tab active" type="button" role="tab" aria-selected="true" data-panel="updatesPanel">Project updates</button>
         <button class="tab" type="button" role="tab" aria-selected="false" data-panel="peoplePanel">People</button>
         <button class="tab" type="button" role="tab" aria-selected="false" data-panel="partnersPanel">Partners</button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-panel="analyticsPanel">Site analytics</button>
         <button class="tab" type="button" role="tab" aria-selected="false" data-panel="settingsPanel">Site settings</button>
       </div>
 
@@ -134,13 +135,82 @@
         </div>
       </section>
 
+      <section class="panel" id="analyticsPanel" role="tabpanel">
+        <article class="card">
+          <div class="card-heading analytics-heading">
+            <div>
+              <h2>Site analytics</h2>
+              <p>Anonymous visit, engagement, navigation and conversion activity. No IP addresses, cookies or persistent visitor fingerprints are stored.</p>
+            </div>
+            <div class="analytics-toolbar">
+              <label for="analyticsRange">Period</label>
+              <select id="analyticsRange">
+                <option value="7">Last 7 days</option>
+                <option value="30" selected>Last 30 days</option>
+                <option value="90">Last 90 days</option>
+              </select>
+              <button class="button button-secondary" id="analyticsRefresh" type="button">Refresh</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <p class="analytics-status" id="analyticsStatus" role="status">Open this section while connected to Supabase to load analytics.</p>
+
+            <div class="analytics-stats" id="analyticsStats" hidden>
+              <article><span>Visits</span><strong id="analyticsVisits">0</strong></article>
+              <article><span>Engaged time</span><strong id="analyticsTime">0s</strong><small>Average per visit</small></article>
+              <article><span>Link clicks</span><strong id="analyticsClicks">0</strong></article>
+              <article><span>Proposal opens</span><strong id="analyticsProposals">0</strong></article>
+              <article><span>Email copies</span><strong id="analyticsCopies">0</strong></article>
+              <article><span>Deep scrolls</span><strong id="analyticsScrolls">0</strong><small>Reached 75%+</small></article>
+            </div>
+
+            <div class="analytics-grid" id="analyticsBreakdowns" hidden>
+              <section>
+                <h3>Visit sources</h3>
+                <div class="analytics-list" id="analyticsSources"></div>
+              </section>
+              <section>
+                <h3>Devices and browsers</h3>
+                <div class="analytics-list" id="analyticsDevices"></div>
+              </section>
+              <section>
+                <h3>Viewed sections</h3>
+                <div class="analytics-list" id="analyticsSections"></div>
+              </section>
+              <section>
+                <h3>Clicked links</h3>
+                <div class="analytics-list" id="analyticsLinks"></div>
+              </section>
+              <section>
+                <h3>Campaigns</h3>
+                <div class="analytics-list" id="analyticsCampaigns"></div>
+              </section>
+              <section>
+                <h3>Timezone and language</h3>
+                <div class="analytics-list" id="analyticsContexts"></div>
+              </section>
+            </div>
+
+            <section class="analytics-recent" id="analyticsRecentWrap" hidden>
+              <h3>Recent activity</h3>
+              <div class="analytics-table-wrap">
+                <table class="analytics-table">
+                  <thead><tr><th>Time</th><th>Activity</th><th>Section</th><th>Detail</th><th>Value</th></tr></thead>
+                  <tbody id="analyticsRecent"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </article>
+      </section>
+
       <section class="panel" id="settingsPanel" role="tabpanel">
         <article class="card">
           <div class="card-heading"><div><h2>Site settings</h2><p>Global labels, proposal, contact details, footer, and social links.</p></div></div>
           <div class="card-body">
             <form id="settingsForm" class="form-grid">
-              <div class="field"><label>Project name<input name="projectName"></label></div>
-              <div class="field"><label>Club name<input name="clubName"></label></div>
+              <div class="field"><label>Flagship project name<input name="projectName"></label></div>
+              <div class="field"><label>Society name<input name="clubName"></label></div>
               <div class="field"><label>Navigation proposal label<input name="navProposalLabel"></label></div>
               <div class="field"><label>University<input name="university"></label></div>
               <div class="field"><label>Contact email<input name="contactEmail" type="email" placeholder="team@example.com"></label></div>
@@ -148,6 +218,9 @@
               <div class="field full"><label>Footer text<input name="footerText"></label></div>
               <div class="field"><label>Instagram URL<input name="instagram" type="url" placeholder="https://"></label></div>
               <div class="field"><label>LinkedIn URL<input name="linkedin" type="url" placeholder="https://"></label></div>
+              <label class="check full"><input name="animations" type="checkbox" checked>Enable page animations</label>
+              <label class="check full"><input name="analyticsEnabled" type="checkbox" checked>Enable anonymous site analytics</label>
+              <p class="settings-note full">Analytics use a per-tab session ID and record referrer/UTM source, coarse device information, viewed sections, scroll depth, clicks, proposal opens, email copies and active time. Global Privacy Control and Do Not Track signals are respected.</p>
               <div class="form-actions full"><button class="button button-primary" type="submit">Save site settings</button></div>
             </form>
           </div>

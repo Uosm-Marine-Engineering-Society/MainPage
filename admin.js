@@ -4,7 +4,7 @@
   const storageKey = "arus-content-v2";
   const legacyStorageKey = "arus-content-v1";
   const localSessionKey = "arus-admin-local-session-v1";
-  const siteKeys = ["projectName", "clubName", "navProposalLabel", "university", "contactEmail", "proposalUrl", "footerText", "instagram", "linkedin", "updatedAt"];
+  const siteKeys = ["projectName", "clubName", "navProposalLabel", "university", "contactEmail", "proposalUrl", "footerText", "instagram", "linkedin", "animations", "analyticsEnabled", "updatedAt"];
   const configured = Boolean(config.url && config.publishableKey && window.supabase);
   const client = configured ? window.supabase.createClient(config.url, config.publishableKey) : null;
   let remoteMode = false;
@@ -156,9 +156,131 @@
     $("#partnerAdminList").innerHTML = listRows(rows, (partner) => `<article class="admin-item"><div class="admin-thumb">${thumbnail(partner.logo_url, partner.name)}</div><div><h3>${esc(partner.name)}</h3><p>${esc(partner.description || "")}</p><span class="item-meta">${esc(partner.tier)} · ${partner.active === false ? "Hidden" : "Visible"} · order ${esc(partner.display_order)}</span></div><div class="item-actions"><button type="button" data-edit-partner="${esc(partner.id)}">Edit</button><button class="delete" type="button" data-delete-table="partners" data-delete-id="${esc(partner.id)}">Delete</button></div></article>`, "No partners yet.");
   }
 
+  function analyticsDuration(seconds) {
+    const total = Math.max(0, Math.round(seconds || 0));
+    if (total < 60) return `${total}s`;
+    const minutes = Math.floor(total / 60);
+    const remainder = total % 60;
+    return remainder ? `${minutes}m ${remainder}s` : `${minutes}m`;
+  }
+
+  function analyticsSource(event) {
+    if (event.utm_source) return `${event.utm_source}${event.utm_medium ? ` · ${event.utm_medium}` : ""}`;
+    if (!event.referrer) return "Direct / unknown";
+    try { return new URL(event.referrer).hostname.replace(/^www\./, "") || "Direct / unknown"; }
+    catch { return event.referrer; }
+  }
+
+  function analyticsEventName(type) {
+    return ({
+      session_start: "Visit started",
+      page_view: "Page viewed",
+      section_view: "Section viewed",
+      link_click: "Link clicked",
+      control_click: "Control used",
+      proposal_open: "Proposal opened",
+      email_copy: "Email copied",
+      scroll_depth: "Scroll depth",
+      engagement: "Engaged time"
+    })[type] || type;
+  }
+
+  function analyticsCount(events, selector) {
+    const counts = new Map();
+    events.forEach((event) => {
+      const label = selector(event);
+      if (!label) return;
+      counts.set(label, (counts.get(label) || 0) + 1);
+    });
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }
+
+  function renderAnalyticsList(target, rows) {
+    $(target).innerHTML = rows.length
+      ? rows.slice(0, 8).map(([label, count]) => `<div class="analytics-list-row"><span title="${esc(label)}">${esc(label)}</span><strong>${esc(count)}</strong></div>`).join("")
+      : `<div class="empty">No data in this period.</div>`;
+  }
+
+  function renderAnalytics(events) {
+    const sessions = new Set(events.map((event) => event.session_id).filter(Boolean));
+    const engagement = events.filter((event) => event.event_type === "engagement").reduce((sum, event) => sum + (Number(event.value) || 0), 0);
+    const clicks = events.filter((event) => event.event_type === "link_click").length;
+    const proposals = events.filter((event) => event.event_type === "proposal_open").length;
+    const copies = events.filter((event) => event.event_type === "email_copy").length;
+    const deepScrolls = new Set(events.filter((event) => event.event_type === "scroll_depth" && Number(event.value) >= 75).map((event) => event.session_id)).size;
+
+    $("#analyticsVisits").textContent = sessions.size.toLocaleString();
+    $("#analyticsTime").textContent = analyticsDuration(sessions.size ? engagement / sessions.size : 0);
+    $("#analyticsClicks").textContent = clicks.toLocaleString();
+    $("#analyticsProposals").textContent = proposals.toLocaleString();
+    $("#analyticsCopies").textContent = copies.toLocaleString();
+    $("#analyticsScrolls").textContent = deepScrolls.toLocaleString();
+
+    const starts = events.filter((event) => event.event_type === "session_start");
+    renderAnalyticsList("#analyticsSources", analyticsCount(starts, analyticsSource));
+    renderAnalyticsList("#analyticsDevices", analyticsCount(starts, (event) => `${event.device || "Unknown device"} · ${event.browser || "Unknown browser"}`));
+    renderAnalyticsList("#analyticsSections", analyticsCount(events.filter((event) => event.event_type === "section_view"), (event) => event.label || event.section));
+    renderAnalyticsList("#analyticsLinks", analyticsCount(events.filter((event) => event.event_type === "link_click"), (event) => event.label || event.target));
+    renderAnalyticsList("#analyticsCampaigns", analyticsCount(starts, (event) => event.utm_campaign || ""));
+    renderAnalyticsList("#analyticsContexts", analyticsCount(starts, (event) => `${event.timezone || "Unknown timezone"} · ${event.language || "Unknown language"}`));
+
+    $("#analyticsRecent").innerHTML = events.slice(0, 60).map((event) => {
+      const detail = event.event_type === "session_start"
+        ? `${analyticsSource(event)} · ${event.device || "Unknown device"} · ${event.browser || "Unknown browser"} · ${event.timezone || "Unknown timezone"}`
+        : event.label || event.target || event.path || "—";
+      const value = event.event_type === "engagement" ? analyticsDuration(event.value) : event.event_type === "scroll_depth" ? `${event.value}%` : "—";
+      const time = new Intl.DateTimeFormat("en-GB", { dateStyle: "short", timeStyle: "short" }).format(new Date(event.occurred_at));
+      return `<tr><td>${esc(time)}</td><td>${esc(analyticsEventName(event.event_type))}</td><td>${esc(event.section || "—")}</td><td title="${esc(event.target || "")}">${esc(detail)}</td><td>${esc(value)}</td></tr>`;
+    }).join("") || `<tr><td colspan="5">No activity in this period.</td></tr>`;
+
+    $("#analyticsStats").hidden = false;
+    $("#analyticsBreakdowns").hidden = false;
+    $("#analyticsRecentWrap").hidden = false;
+  }
+
+  async function loadAnalytics() {
+    const status = $("#analyticsStatus");
+    status.classList.remove("is-error");
+    if (!remoteMode) {
+      status.textContent = "Analytics require the Supabase connection. Local preview activity is intentionally not tracked.";
+      $("#analyticsStats").hidden = true;
+      $("#analyticsBreakdowns").hidden = true;
+      $("#analyticsRecentWrap").hidden = true;
+      return;
+    }
+
+    const days = Number($("#analyticsRange").value) || 30;
+    const since = new Date(Date.now() - days * 86400000).toISOString();
+    status.textContent = "Loading analytics…";
+    try {
+      const result = await client
+        .from("analytics_events")
+        .select("occurred_at,session_id,event_type,path,section,target,label,value,referrer,utm_source,utm_medium,utm_campaign,language,timezone,device,browser,platform,screen_size,viewport_size")
+        .gte("occurred_at", since)
+        .order("occurred_at", { ascending: false })
+        .limit(10000);
+      if (result.error) throw result.error;
+      renderAnalytics(result.data || []);
+      status.textContent = `Loaded ${(result.data || []).length.toLocaleString()} events from the last ${days} days${result.data?.length === 10000 ? " (display limit reached)" : ""}.`;
+    } catch (error) {
+      status.textContent = error?.message?.includes("analytics_events")
+        ? "Analytics storage is not ready. Run the latest schema.sql in Supabase, then refresh."
+        : `Could not load analytics: ${error?.message || "Unknown error"}`;
+      status.classList.add("is-error");
+      $("#analyticsStats").hidden = true;
+      $("#analyticsBreakdowns").hidden = true;
+      $("#analyticsRecentWrap").hidden = true;
+    }
+  }
+
   function fillSettings() {
     const form = $("#settingsForm");
-    siteKeys.filter((key) => key !== "updatedAt").forEach((key) => { form.elements[key].value = state.site[key] || ""; });
+    siteKeys.filter((key) => key !== "updatedAt").forEach((key) => {
+      const field = form.elements[key];
+      if (!field) return;
+      if (field.type === "checkbox") field.checked = state.site[key] !== false;
+      else field.value = state.site[key] || "";
+    });
   }
 
   function renderAll() {
@@ -284,6 +406,7 @@
       tab.classList.add("active");
       tab.setAttribute("aria-selected", "true");
       document.getElementById(tab.dataset.panel).classList.add("active");
+      if (tab.dataset.panel === "analyticsPanel") loadAnalytics();
     }));
   }
 
@@ -338,8 +461,22 @@
 
   $("#settingsForm").addEventListener("submit", async (event) => {
     event.preventDefault();
-    const data = dataFromForm(event.currentTarget);
-    const next = { ...state.site, ...Object.fromEntries(Object.entries(data).filter(([key]) => siteKeys.includes(key)).map(([key, value]) => [key, value.trim()])), updatedAt: new Date().toISOString() };
+    const form = event.currentTarget;
+    const data = dataFromForm(form);
+    // Text fields only. Checkboxes are read from .checked below: an unchecked box is
+    // absent from FormData entirely, and a checked one yields the string "on".
+    const text = Object.fromEntries(
+      Object.entries(data)
+        .filter(([key]) => siteKeys.includes(key) && form.elements[key]?.type !== "checkbox")
+        .map(([key, value]) => [key, String(value).trim()])
+    );
+    const next = {
+      ...state.site,
+      ...text,
+      animations: form.elements.animations.checked,
+      analyticsEnabled: form.elements.analyticsEnabled.checked,
+      updatedAt: new Date().toISOString()
+    };
     try {
       await saveSite(next);
       fillSettings();
@@ -433,6 +570,8 @@
   });
 
   bindTabs();
+  $("#analyticsRefresh").addEventListener("click", loadAnalytics);
+  $("#analyticsRange").addEventListener("change", loadAnalytics);
   bindFilePreview("#personForm", "image_file", "#personPreview");
   bindFilePreview("#partnerForm", "logo_file", "#partnerPreview");
   resetForm("updateForm");

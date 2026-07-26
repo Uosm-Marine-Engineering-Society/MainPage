@@ -4,38 +4,56 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#093c50">
-  <meta name="description" content="UoSM ARUS I is a student team designing and building an Energy Class electric competition boat for the Darwin qualifier in 2027.">
-  <meta property="og:title" content="UoSM ARUS I | Electric competition boat">
-  <meta property="og:description" content="A University of Southampton Malaysia student team preparing an Energy Class boat for the Darwin qualifier in September 2027.">
+  <meta name="description" content="The Marine Engineering Society is a student society at the University of Southampton Malaysia. Its founding project, UoSM ARUS I, is a battery-electric Energy Class competition boat entering the Darwin Asia-Pacific Qualifier in September 2027.">
+  <meta property="og:title" content="Marine Engineering Society | University of Southampton Malaysia">
+  <meta property="og:description" content="Our founding project, UoSM ARUS I, is an Energy Class competition boat entering the Darwin Asia-Pacific Qualifier in September 2027.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://uosm-marine-engineering-society.github.io/MainPage/">
   <meta property="og:image" content="https://uosm-marine-engineering-society.github.io/MainPage/assets/social-card.png">
-  <meta property="og:image:alt" content="UoSM ARUS I electric competition boat">
+  <meta property="og:image:alt" content="Marine Engineering Society, University of Southampton Malaysia">
   <meta name="twitter:card" content="summary_large_image">
-  <title>UoSM ARUS I | Electric competition boat</title>
+  <title>Marine Engineering Society | UoSM ARUS I</title>
+  <link rel="canonical" href="https://uosm-marine-engineering-society.github.io/MainPage/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Marine Engineering Society",
+    "alternateName": "UoSM Marine Engineering Society",
+    "url": "https://uosm-marine-engineering-society.github.io/MainPage/",
+    "logo": "https://uosm-marine-engineering-society.github.io/MainPage/assets/mes-mark.webp",
+    "description": "A student engineering society at the University of Southampton Malaysia. Its founding project is UoSM ARUS I, a battery-electric Energy Class competition boat.",
+    "parentOrganization": {
+      "@type": "CollegeOrUniversity",
+      "name": "University of Southampton Malaysia"
+    }
+  }
+  </script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
 
   <header class="site-header" id="siteHeader">
     <div class="container nav-wrap">
-      <a class="brand" href="#top" aria-label="UoSM ARUS I home">
-        <img src="assets/mes-mark.webp" width="58" height="58" alt="Marine Engineering Society logo">
-        <span><strong data-site-text="projectName">UoSM ARUS I</strong><small data-site-text="clubName">Marine Engineering Society</small></span>
+      <a class="brand" href="#top" aria-label="Marine Engineering Society home">
+        <img src="assets/mes-mark.webp" width="120" height="120" alt="Marine Engineering Society logo">
+        <span>
+          <strong data-site-text="clubName">Marine Engineering Society</strong>
+          <small data-site-text="university">University of Southampton Malaysia</small>
+        </span>
       </a>
-      <button class="menu-toggle" id="menuToggle" type="button" aria-label="Open navigation" aria-expanded="false"><span></span><span></span><span></span></button>
+      <button class="menu-toggle" id="menuToggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="siteNav">
+        <span></span><span></span><span></span>
+      </button>
       <nav class="site-nav" id="siteNav" aria-label="Main navigation">
         <div class="nav-links">
-          <a href="#engineering">Engineering</a>
-          <a href="#roadmap">Roadmap</a>
+          <a href="#project">ARUS I</a>
           <a href="#people">Team</a>
-          <a href="#updates">Updates</a>
           <a href="#partnership">Sponsorship</a>
         </div>
-        <a class="nav-download" data-proposal-link href="assets/documents/arus-1-sponsorship-proposal-v2.3.pdf" target="_blank" rel="noreferrer" id="navProposalLabel">View proposal</a>
-        <a class="nav-admin" href="admin.html">Admin login</a>
+        <a class="nav-cta" data-proposal-link href="assets/documents/arus-1-sponsorship-proposal-v2.3.pdf" target="_blank" rel="noreferrer" id="navProposalLabel">View proposal</a>
       </nav>
     </div>
   </header>
@@ -43,112 +61,376 @@
   <main id="main">
     <section class="hero" id="top">
       <div class="container hero-grid">
-        <div class="hero-copy">
+        <div class="hero-copy reveal">
           <p class="eyebrow" data-site-text="university">University of Southampton Malaysia</p>
-          <h1>ARUS I electric competition boat</h1>
-          <p class="intro">A University of Southampton Malaysia student team designing and building an Energy Class boat for the Darwin Asia-Pacific Qualifier in September 2027.</p>
+          <h1 data-site-text="clubName">Marine Engineering Society</h1>
+          <p class="intro">Our founding project, UoSM ARUS I, is a battery-electric competition boat for the Monaco Energy Boat Challenge World Series.</p>
           <div class="hero-actions">
-            <a class="button button-primary" data-proposal-link href="assets/documents/arus-1-sponsorship-proposal-v2.3.pdf" target="_blank" rel="noreferrer">View sponsorship proposal <span aria-hidden="true">↗</span></a>
-            <a class="button button-quiet email-only" data-email-link href="#contact" hidden>Contact the team <span aria-hidden="true">→</span></a>
+            <a class="button button-primary" data-proposal-link href="assets/documents/arus-1-sponsorship-proposal-v2.3.pdf" target="_blank" rel="noreferrer">Sponsorship proposal</a>
+            <a class="button button-quiet" href="#project">ARUS I</a>
           </div>
-          <p class="qualification-note">Monaco 2028 depends on qualifying in Darwin.</p>
         </div>
-        <aside class="project-brief" aria-label="Project brief">
-          <p class="section-label">Project brief</p>
-          <dl>
-            <div><dt>Competition class</dt><dd>Energy Class</dd></div>
-            <div><dt>Primary event</dt><dd>Darwin qualifier · September 2027</dd></div>
-            <div><dt>Current phase</dt><dd>Research, rules review and concept selection</dd></div>
-            <div><dt>Final event</dt><dd>Monaco · conditional on qualification</dd></div>
-          </dl>
-        </aside>
+
+        <div class="hero-side">
+          <aside class="project-brief reveal" aria-label="Society at a glance">
+            <p class="brief-title">At a glance</p>
+            <dl>
+              <div><dt>Status</dt><dd>Registration submitted, July 2026</dd></div>
+              <div><dt>Members</dt><dd>9 students · 4 academic advisors</dd></div>
+              <div><dt>Founding project</dt><dd>UoSM ARUS I</dd></div>
+              <div><dt>Competition</dt><dd>Darwin qualifier · September 2027</dd></div>
+            </dl>
+          </aside>
+
+          <div class="contact-card reveal">
+            <p class="brief-title">Sponsorship enquiries</p>
+            <p class="contact-card-line email-only" hidden><button class="email-copy" type="button" data-email-copy aria-label="Copy email address"></button></p>
+            <p class="contact-card-note" id="contactFallback">Contact us at <button class="email-copy" type="button" data-email-copy aria-label="Copy email address">uosmmes@gmail.com</button>.</p>
+          </div>
+        </div>
       </div>
     </section>
 
-    <section class="fact-band" aria-label="Project facts">
-      <div class="container facts-grid">
-        <div><span>Engineering scope</span><strong>RM81,826</strong></div>
-        <div><span>Campaign target</span><strong>RM150,000</strong></div>
+    <section class="metric-band" aria-label="Key figures">
+      <div class="container metric-grid">
+        <div><span>Costed engineering scope</span><strong>RM81,826</strong></div>
+        <div><span>Provisional campaign target</span><strong>RM150,000</strong></div>
         <div><span>Qualifier</span><strong>Darwin · Sep 2027</strong></div>
-        <div><span>Final route</span><strong>Monaco · if qualified</strong></div>
+        <div><span>World final</span><strong>Monaco 2028 · if qualified</strong></div>
+      </div>
+    </section>
+
+    <section class="section section-tint" id="project">
+      <div class="container">
+        <header class="section-head reveal">
+          <p class="section-label">Founding project</p>
+          <h2 data-site-text="projectName">UoSM ARUS I</h2>
+          <p class="lead">Battery-electric Energy Class boat for the Darwin Asia-Pacific Qualifier in September 2027. Monaco follows if the team qualifies.</p>
+        </header>
+
+        <div class="project-intro">
+          <figure class="render-frame reveal">
+            <!-- COCKPIT RENDER
+                 Drop the image in by replacing the placeholder <div> below with:
+                 <img src="assets/images/arus-cockpit-render.webp" width="1600" height="1000"
+                      alt="ARUS I cockpit and control layout" loading="lazy">
+                 Use a 16:10 image so the reserved space does not shift. -->
+            <div class="render-placeholder"><span>Cockpit render</span></div>
+            <figcaption>Preliminary draft of cockpit and control layout.</figcaption>
+          </figure>
+
+          <aside class="project-brief reveal" aria-label="Project brief">
+            <p class="brief-title">Project brief</p>
+            <dl>
+              <div><dt>Class</dt><dd>Energy Class</dd></div>
+              <div><dt>Qualifier</dt><dd>Darwin, Australia · September 2027</dd></div>
+              <div><dt>World final</dt><dd>Monaco · early 2028, subject to qualification</dd></div>
+              <div><dt>Programme</dt><dd>June 2026 – April 2028</dd></div>
+              <div><dt>Current phase</dt><dd>Research, rules review and concept selection</dd></div>
+            </dl>
+          </aside>
+        </div>
+
+        <div class="panel source-panel reveal">
+          <p class="table-caption">Independent sources</p>
+          <dl class="lead-in-list">
+            <div>
+              <dt><a href="https://monacoenergyboatchallenge.com/" target="_blank" rel="noreferrer">Monaco Energy Boat Challenge</a></dt>
+              <dd>Official event site.</dd>
+            </div>
+            <div>
+              <dt><a href="https://territorystories.nt.gov.au/10070/1042351/0" target="_blank" rel="noreferrer">Northern Territory Government</a></dt>
+              <dd>Media release, 15 July 2026 — "Darwin lands prestigious Monaco Energy Boat Challenge".</dd>
+            </div>
+          </dl>
+        </div>
       </div>
     </section>
 
     <section class="section" id="engineering">
-      <div class="container section-intro split-intro">
-        <div><p class="section-label">Engineering</p><h2>Engineering scope</h2></div>
-        <p>ARUS I combines marine structure, battery-electric propulsion, steering, controls, telemetry and safety systems in one competition boat.</p>
-      </div>
-      <div class="container system-layout">
-        <figure class="system-figure">
-          <img src="assets/images/arus-technical-plate.svg" width="1600" height="1020" loading="lazy" alt="Illustrative ARUS I system architecture showing the planned hull, cockpit, battery, propulsion and control systems">
-          <figcaption>Illustrative system architecture. Final design decisions remain subject to competition rules and design review.</figcaption>
-        </figure>
-        <dl class="system-list">
-          <div><dt>Hull and structure</dt><dd>Hull interface, cockpit, mounting, materials and manufacturing plan.</dd></div>
-          <div><dt>Propulsion and steering</dt><dd>Motor, controller, drive, alignment, mechanical supports and steering checks.</dd></div>
-          <div><dt>Energy system</dt><dd>Battery, BMS, fusing, isolation, charging and protected enclosures.</dd></div>
-          <div><dt>Controls and telemetry</dt><dd>Pilot interface, vehicle controls and essential operating data.</dd></div>
-          <div><dt>Safety and testing</dt><dd>Emergency controls, inspections, dry tests, water tests and documented evidence.</dd></div>
-        </dl>
-      </div>
-    </section>
-
-    <section class="section section-tint" id="build">
-      <div class="container section-intro split-intro">
-        <div><p class="section-label">Current work</p><h2>Design baseline</h2></div>
-        <p>The team is completing research, rules review, system architecture and component selection ahead of concept selection in September 2026.</p>
-      </div>
-      <div class="container build-grid">
-        <article class="build-card"><p class="section-label">Previous prototype</p><h3>Build and test record</h3><p>Previous build and test work is being used to guide the new design.</p></article>
-        <article class="build-card"><p class="section-label">ARUS I design</p><h3>Current baseline</h3><p>The current baseline covers the hull, cockpit, propulsion, energy storage, protection, controls and telemetry.</p></article>
-      </div>
-    </section>
-
-    <section class="section" id="roadmap">
-      <div class="container section-intro split-intro">
-        <div><p class="section-label">Roadmap</p><h2>Project schedule</h2></div>
-        <p>Darwin is the required qualifier. Monaco follows only if the team qualifies and the final dates are confirmed.</p>
-      </div>
-      <div class="container timeline">
-        <article><time>Jun–Sep 2026</time><h3>Research and concept</h3><p>Rules matrix, technical options, initial budget and concept selection.</p></article>
-        <article><time>Nov 2026–Jan 2027</time><h3>Detailed design</h3><p>CAD, systems integration, procurement planning, risk controls and design freeze.</p></article>
-        <article><time>Feb–Apr 2027</time><h3>Prototype and validation</h3><p>Integrated prototype, dry tests, first-water testing and corrections.</p></article>
-        <article><time>Jul–Sep 2027</time><h3>Darwin readiness</h3><p>Full integration, inspection evidence, transport planning and qualifier preparation.</p></article>
-        <article><time>Early 2028</time><h3>Monaco, if qualified</h3><p>Conditional final campaign, competition and project handover.</p></article>
-      </div>
-    </section>
-
-    <section class="section section-tint" id="people">
-      <div class="container section-intro split-intro"><div><p class="section-label">Team</p><h2>ARUS I team</h2></div><p>Nine students across leadership, electrical and mechanical engineering, supported by four academic advisors.</p></div>
       <div class="container">
-        <div class="team-groups" id="teamList"></div>
-        <div class="advisor-wrap" id="advisorWrap"><p class="section-label">Academic advisors</p><div class="advisor-grid" id="advisorList"></div></div>
+        <header class="section-head reveal">
+          <p class="section-label">Engineering</p>
+          <h2>Boat systems</h2>
+          <p class="lead">In the Energy Class the catamaran hull is identical for every team and supplied by the Yacht Club de Monaco. Teams design the cockpit, propulsion and energy strategy.</p>
+        </header>
+
+        <div class="def-grid reveal">
+          <div><h3>Structure and cockpit</h3><p>Cockpit layout, mounting and pilot protection.</p></div>
+          <div><h3>Propulsion and energy</h3><p>Motor, drive, battery, BMS, isolation and charging.</p></div>
+          <div><h3>Controls and safety</h3><p>Pilot interface, telemetry, emergency stop and kill cord.</p></div>
+        </div>
+
+        <div class="subsection reveal">
+          <p class="table-caption">Costed engineering scope</p>
+          <p class="table-hint">Select a department for its line items. Full schedule in the proposal.</p>
+          <div class="table-wrap">
+            <table class="data-table">
+              <caption class="visually-hidden">Engineering budget by department and system, in Malaysian ringgit</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Scope</th>
+                  <th scope="col" class="num">Budget (RM)</th>
+                  <th scope="col" class="num">Equivalent (US$)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="row-group">
+                  <th scope="row">
+                    <button class="row-toggle" type="button" aria-expanded="true" aria-controls="costMechItems">Mechanical department</button>
+                  </th>
+                  <td class="num">23,637</td>
+                  <td class="num">5,909</td>
+                </tr>
+              </tbody>
+              <tbody id="costMechItems" class="cost-items">
+                <tr><td class="row-item">Propulsion</td><td class="num">13,429</td><td class="num"></td></tr>
+                <tr><td class="row-item">Chassis and cockpit</td><td class="num">7,490</td><td class="num"></td></tr>
+                <tr><td class="row-item">Safety equipment</td><td class="num">1,548</td><td class="num"></td></tr>
+                <tr><td class="row-item">Steering</td><td class="num">1,170</td><td class="num"></td></tr>
+              </tbody>
+
+              <tbody>
+                <tr class="row-group">
+                  <th scope="row">
+                    <button class="row-toggle" type="button" aria-expanded="true" aria-controls="costElecItems">Electrical department</button>
+                  </th>
+                  <td class="num">58,189</td>
+                  <td class="num">14,279</td>
+                </tr>
+              </tbody>
+              <tbody id="costElecItems" class="cost-items">
+                <tr><td class="row-item">Battery and charging</td><td class="num">22,826</td><td class="num"></td></tr>
+                <tr><td class="row-item">Propulsion</td><td class="num">12,468</td><td class="num"></td></tr>
+                <tr><td class="row-item">HV distribution and safety</td><td class="num">4,792</td><td class="num"></td></tr>
+                <tr><td class="row-item">Cabling and integration</td><td class="num">4,156</td><td class="num"></td></tr>
+                <tr><td class="row-item">Telemetry and pilot interface</td><td class="num">4,119</td><td class="num"></td></tr>
+                <tr><td class="row-item">LV power and enclosures</td><td class="num">2,445</td><td class="num"></td></tr>
+                <tr><td class="row-item">Cooling</td><td class="num">2,119</td><td class="num"></td></tr>
+                <tr><td class="row-item">Integration contingency</td><td class="num">1,630</td><td class="num"></td></tr>
+                <tr><td class="row-item">Communications and pilot safety</td><td class="num">1,548</td><td class="num"></td></tr>
+                <tr><td class="row-item">Control and sensing</td><td class="num">1,068</td><td class="num"></td></tr>
+                <tr><td class="row-item">Freight and import</td><td class="num">1,018</td><td class="num"></td></tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th scope="row">Total costed engineering scope</th>
+                  <td class="num">81,826</td>
+                  <td class="num">20,188</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <p class="table-note">Hull, logistics, competition entry and branding are not yet costed. The full campaign is planned at RM130,000–RM180,000 pending quotations.</p>
+        </div>
       </div>
     </section>
 
-    <section class="section" id="updates">
-      <div class="container section-intro split-intro"><div><p class="section-label">Updates</p><h2>Project updates</h2></div><p>Recent decisions and milestones.</p></div>
-      <div class="container update-grid" id="updateList"></div>
-    </section>
+    <section class="section section-tint" id="roadmap">
+      <div class="container">
+        <header class="section-head reveal">
+          <p class="section-label">Roadmap</p>
+          <div class="head-row">
+            <h2>Delivery schedule</h2>
+            <div class="view-toggle" id="scheduleToggle" role="group" aria-label="Schedule view" hidden>
+              <button class="view-btn is-on" type="button" data-view-btn="list" aria-pressed="true">List</button>
+              <button class="view-btn" type="button" data-view-btn="chart" aria-pressed="false">Timeline</button>
+            </div>
+          </div>
+        </header>
 
-    <section class="section section-navy" id="partnership">
-      <div class="container section-intro split-intro"><div><p class="section-label">Sponsorship</p><h2>Sponsorship</h2></div><p>Support can be financial or in kind, including components, fabrication, testing, software and logistics.</p></div>
-      <div class="container partnership-layout">
-        <div class="funding-note"><p class="section-label">Campaign funding</p><strong>RM150,000 working target</strong><p>The costed engineering scope is RM81,826. The Darwin-to-Monaco campaign is planned at RM130,000–RM180,000 while remaining quotations are completed.</p><a class="text-link" data-proposal-link href="assets/documents/arus-1-sponsorship-proposal-v2.3.pdf" target="_blank" rel="noreferrer">View the cost schedule and benefits <span aria-hidden="true">↗</span></a></div>
-        <div class="tier-table-wrap"><table class="tier-table"><caption>Suggested contribution levels</caption><thead><tr><th scope="col">Partnership level</th><th scope="col">Contribution</th><th scope="col">Typical role</th></tr></thead><tbody><tr><th scope="row">Flagship Partner</th><td>RM10,000+</td><td>Project-wide or named-scope support</td></tr><tr><th scope="row">Strategic Partner</th><td>RM5,000–RM9,999</td><td>Major subsystem or competition support</td></tr><tr><th scope="row">Innovation Partner</th><td>RM2,500–RM4,999</td><td>Defined engineering or campaign scope</td></tr><tr><th scope="row">Supporting Partner</th><td>RM500–RM2,499</td><td>Matched component, service or event need</td></tr></tbody></table></div>
+        <!-- Rows carry the full proposal schedule. Five show in list view; the rest
+             unfold when the timeline view expands the track column. -->
+        <div class="schedule reveal" id="schedule" data-view="list" data-start="2026-06-18" data-end="2028-04-30">
+          <div class="sched-row sched-head" aria-hidden="true">
+            <p class="sched-date"></p>
+            <p class="sched-title"></p>
+            <div class="sched-track" id="schedAxis"></div>
+          </div>
+
+          <ol class="sched-rows">
+            <li class="sched-row" data-extra>
+              <p class="sched-date">18 Jun 2026</p>
+              <p class="sched-title">Project restart</p>
+              <div class="sched-track"><span class="sched-bar is-point" data-start="2026-06-18" data-end="2026-06-18" title="Team structure, communication system and project scope confirmed"></span></div>
+            </li>
+            <li class="sched-row is-key">
+              <p class="sched-date">Jun–Sep 2026</p>
+              <p class="sched-title">Research, rules review and concept selection</p>
+              <div class="sched-track"><span class="sched-bar" data-start="2026-06-18" data-end="2026-09-30" title="Technical options, rules matrix, initial budget, sponsor preparation and selected technical concept"></span></div>
+            </li>
+            <li class="sched-row" data-extra>
+              <p class="sched-date">30 Nov 2026</p>
+              <p class="sched-title">Detailed design</p>
+              <div class="sched-track"><span class="sched-bar" data-start="2026-09-30" data-end="2026-11-30" title="CAD, propulsion, electrical, steering, safety and bill of materials"></span></div>
+            </li>
+            <li class="sched-row">
+              <p class="sched-date">15 Jan 2027</p>
+              <p class="sched-title">Design freeze</p>
+              <div class="sched-track"><span class="sched-bar" data-start="2026-11-30" data-end="2027-01-15" title="Procurement- and fabrication-ready design package"></span></div>
+            </li>
+            <li class="sched-row" data-extra>
+              <p class="sched-date">15 Feb 2027</p>
+              <p class="sched-title">Prototype complete</p>
+              <div class="sched-track"><span class="sched-bar" data-start="2027-01-15" data-end="2027-02-15" title="Integrated prototype ready for controlled testing"></span></div>
+            </li>
+            <li class="sched-row">
+              <p class="sched-date">31 Mar 2027</p>
+              <p class="sched-title">First water tests</p>
+              <div class="sched-track"><span class="sched-bar" data-start="2027-02-15" data-end="2027-03-31" title="Bench, dry and first-water tests with corrections recorded"></span></div>
+            </li>
+            <li class="sched-row" data-extra>
+              <p class="sched-date">30 Apr 2027</p>
+              <p class="sched-title">Subsystem validation</p>
+              <div class="sched-track"><span class="sched-bar" data-start="2027-03-31" data-end="2027-04-30" title="Validated baseline and updated risk controls"></span></div>
+            </li>
+            <li class="sched-row" data-extra>
+              <p class="sched-date">31 Jul 2027</p>
+              <p class="sched-title">Full integration</p>
+              <div class="sched-track"><span class="sched-bar" data-start="2027-04-30" data-end="2027-07-31" title="Competition boat assembled and local test campaign underway"></span></div>
+            </li>
+            <li class="sched-row" data-extra>
+              <p class="sched-date">31 Aug 2027</p>
+              <p class="sched-title">Darwin readiness gate</p>
+              <div class="sched-track"><span class="sched-bar" data-start="2027-07-31" data-end="2027-08-31" title="Inspection evidence, transport plan and team logistics ready"></span></div>
+            </li>
+            <li class="sched-row">
+              <p class="sched-date">Sep 2027</p>
+              <p class="sched-title">Darwin qualifier</p>
+              <div class="sched-track"><span class="sched-bar is-event" data-start="2027-09-01" data-end="2027-09-30" title="Qualification attempt and competition report"></span></div>
+            </li>
+            <li class="sched-row" data-extra>
+              <p class="sched-date">Oct–Dec 2027</p>
+              <p class="sched-title">Post-qualifier optimisation</p>
+              <div class="sched-track"><span class="sched-bar" data-start="2027-10-01" data-end="2027-12-31" title="Repairs, performance gains, documentation and sponsor reporting"></span></div>
+            </li>
+            <li class="sched-row">
+              <p class="sched-date">Early 2028</p>
+              <p class="sched-title">Monaco final, if qualified</p>
+              <div class="sched-track"><span class="sched-bar is-conditional" data-start="2028-01-01" data-end="2028-03-31" title="Participation subject to qualification and confirmed dates"></span></div>
+            </li>
+            <li class="sched-row" data-extra>
+              <p class="sched-date">30 Apr 2028</p>
+              <p class="sched-title">Final handover</p>
+              <div class="sched-track"><span class="sched-bar" data-start="2028-01-01" data-end="2028-04-30" title="Technical, financial, sponsor, competition and continuity pack"></span></div>
+            </li>
+          </ol>
+
+          <p class="sched-legend" aria-hidden="true">
+            <span class="key-swatch"></span>Planned work
+            <span class="key-swatch is-event"></span>Competition
+            <span class="key-swatch is-conditional"></span>Subject to qualification
+          </p>
+        </div>
       </div>
-      <div class="container partner-section"><p class="section-label">Current partners</p><div class="partner-list" id="partnerList"></div></div>
     </section>
 
-    <section class="contact" id="contact"><div class="container contact-inner"><div><p class="section-label">Contact</p><h2>Contact the team</h2><p>For sponsorship and technical support enquiries.</p><p class="contact-email email-only" hidden><span>Email</span>: <a id="contactEmail" data-email-link href=""></a></p></div><div class="contact-actions"><a class="button button-primary email-only" data-email-link href="" hidden>Email the team <span aria-hidden="true">→</span></a><a class="button button-outline" data-proposal-link href="assets/documents/arus-1-sponsorship-proposal-v2.3.pdf" target="_blank" rel="noreferrer">Download proposal <span aria-hidden="true">↓</span></a></div></div></section>
+    <section class="section" id="people">
+      <div class="container">
+        <header class="section-head reveal">
+          <p class="section-label">Team</p>
+          <h2>Team and advisors</h2>
+        </header>
+
+        <div class="team-groups reveal" id="teamList"></div>
+
+        <div class="advisor-wrap reveal" id="advisorWrap">
+          <p class="table-caption">Academic advisors</p>
+          <p class="table-hint"></p>
+          <div class="advisor-grid" id="advisorList"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-tint" id="updates">
+      <div class="container">
+        <header class="section-head reveal">
+          <p class="section-label">Updates</p>
+          <h2>Latest</h2>
+        </header>
+        <div class="update-grid reveal" id="updateList"></div>
+      </div>
+    </section>
+
+    <section class="section" id="partnership">
+      <div class="container">
+        <header class="section-head reveal">
+          <p class="section-label">Sponsorship</p>
+          <h2>Support the campaign</h2>
+          <p class="lead">Sponsorship funds ARUS I and is administered by us. Support can be cash or in kind, valued at an agreed fair-market rate.</p>
+        </header>
+
+        <div class="funding-panel reveal">
+          <div>
+            <p class="funding-label">Campaign target</p>
+            <p class="funding-figure">RM150,000</p>
+            <p>Costed engineering scope RM81,826. Full campaign planned at RM130,000–RM180,000 pending quotations.</p>
+          </div>
+          <a class="button button-outline" data-proposal-link href="assets/documents/arus-1-sponsorship-proposal-v2.3.pdf" target="_blank" rel="noreferrer">Cost schedule and benefits</a>
+        </div>
+
+        <div class="subsection reveal">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th scope="col">Partnership level</th>
+                  <th scope="col">Contribution</th>
+                  <th scope="col">Partners sought</th>
+                  <th scope="col">Recognition and role</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><th scope="row">Flagship</th><td>RM10,000+</td><td>2–3</td><td>Project-wide recognition or named-scope support</td></tr>
+                <tr><th scope="row">Strategic</th><td>RM5,000–9,999</td><td>4–6</td><td>Major subsystem or competition support</td></tr>
+                <tr><th scope="row">Innovation</th><td>RM2,500–4,999</td><td>6–10</td><td>Defined engineering or campaign scope</td></tr>
+                <tr><th scope="row">Supporting</th><td>RM500–2,499</td><td>Open</td><td>Matched component, service or event support</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="table-note">Partners receive monthly progress and budget reports, testing reports and a final project report.</p>
+        </div>
+
+        <div class="subsection reveal">
+          <p class="table-caption">Partners</p>
+          <div class="partner-list" id="partnerList"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="contact" id="contact">
+      <div class="container contact-inner">
+        <div>
+          <h2>Discuss a partnership</h2>
+          <p class="contact-email email-only" hidden><button class="email-copy" type="button" data-email-copy aria-label="Copy email address"></button></p>
+        </div>
+        <div class="contact-actions">
+          <a class="button button-outline" data-proposal-link href="assets/documents/arus-1-sponsorship-proposal-v2.3.pdf" target="_blank" rel="noreferrer">Download proposal</a>
+        </div>
+      </div>
+    </section>
   </main>
 
-  <footer class="site-footer"><div class="container footer-inner"><img src="assets/mes-lockup.webp" width="260" height="100" alt="University of Southampton Malaysia Marine Engineering Society"><div><strong data-site-text="projectName">UoSM ARUS I</strong><span id="footerText">Student engineering project · University of Southampton Malaysia</span></div><div class="footer-links" id="footerLinks"></div><span>© <span id="year"></span> <span data-site-text="clubName">Marine Engineering Society</span></span></div></footer>
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <img src="assets/mes-lockup.webp" width="260" height="100" alt="University of Southampton Malaysia Marine Engineering Society">
+      <div class="footer-identity">
+        <strong data-site-text="clubName">Marine Engineering Society</strong>
+        <span id="footerText">Marine Engineering Society · University of Southampton Malaysia</span>
+        <span class="footer-stamp" id="siteUpdated"></span>
+      </div>
+      <div class="footer-meta">
+        <div class="footer-links" id="footerLinks"></div>
+        <span>© <span id="year"></span> <span data-site-text="clubName">Marine Engineering Society</span></span>
+        <a class="footer-admin" href="admin.html" aria-label="Admin login">Admin</a>
+      </div>
+    </div>
+  </footer>
 
   <script src="content.js"></script>
   <script src="supabase-config.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="analytics.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
