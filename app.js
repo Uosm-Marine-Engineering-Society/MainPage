@@ -14,15 +14,6 @@
   const esc = (value = "") => String(value).replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
   const clone = (value) => typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
   const initials = (name = "") => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
-  const advisorProfiles = {
-    "ehsan-mesbahi": "https://www.southamptonmalaysia.edu.my/about/meet-our-team/academic-provost-and-associate-vice-president-international-malaysia",
-    "suan-hui-pu": "https://www.southamptonmalaysia.edu.my/professor-suan-hui-pu",
-    "vun-jack": "https://www.southampton.ac.uk/my/about/staff/cvj1g19.page"
-  };
-  const advisorProfileFor = (person) => {
-    const identity = `${person.id || ""} ${person.name || ""}`.toLowerCase();
-    return Object.entries(advisorProfiles).find(([key]) => identity.includes(key) || identity.includes(key.replaceAll("-", " ")))?.[1] || "";
-  };
   const instagramMark = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5"/><circle cx="12" cy="12" r="4.1"/><circle cx="17.6" cy="6.6" r="1" class="social-dot"/></svg>';
   const formatDate = (value) => {
     const date = new Date(`${value || ""}T00:00:00`);
@@ -85,8 +76,15 @@
     return items.filter((item) => item.active !== false).sort((a, b) => (Number(a.display_order) || 999) - (Number(b.display_order) || 999));
   }
 
+  // Manual order first, publication date second. Where display_order is absent
+  // or still on its shared default every row ties, so the date decides and the
+  // ordering is identical to before the column existed.
   function renderUpdates(updates) {
-    const rows = sortedActive(updates).sort((a, b) => new Date(b.published_at) - new Date(a.published_at)).slice(0, 3);
+    const rows = (updates || [])
+      .filter((item) => item.active !== false)
+      .sort((a, b) => (Number(a.display_order) || 0) - (Number(b.display_order) || 0)
+        || new Date(b.published_at) - new Date(a.published_at))
+      .slice(0, 3);
     $("#updateList").innerHTML = rows.length ? rows.map((item) => {
       const link = item.link_url ? `<a href="${esc(item.link_url)}" target="_blank" rel="noreferrer">Read update</a>` : "";
       return `<article class="update-item"><time datetime="${esc(item.published_at)}">${esc(formatDate(item.published_at))}</time><h3>${esc(item.title)}</h3><p>${esc(item.summary)}</p>${link}</article>`;
@@ -124,9 +122,8 @@
       : `<p class="empty-state">Team profiles will appear here.</p>`;
     $("#advisorWrap").hidden = !advisors.length;
     $("#advisorList").innerHTML = advisors.map((person) => {
-      const profileUrl = advisorProfileFor(person);
-      const name = profileUrl
-        ? `<a class="advisor-name" href="${esc(profileUrl)}" target="_blank" rel="noreferrer">${esc(person.name)}</a>`
+      const name = person.profile_url
+        ? `<a class="advisor-name" href="${esc(person.profile_url)}" target="_blank" rel="noreferrer">${esc(person.name)}</a>`
         : esc(person.name);
       return `<article class="advisor-card"><h3>${name}</h3><p>${esc(person.role || "Academic Advisor")}</p></article>`;
     }).join("");

@@ -53,11 +53,12 @@
 
       <section class="panel active" id="updatesPanel" role="tabpanel">
         <div class="panel-grid">
-          <article class="card">
-            <div class="card-heading"><div><h2 id="updateFormTitle">Add project update</h2><p>Newest active updates appear first. The website shows the latest three.</p></div></div>
+          <article class="card form-card">
+            <div class="card-heading"><div><h2 id="updateFormTitle">Add project update</h2><p>The website shows the first three visible updates.</p></div></div>
             <div class="card-body">
               <form id="updateForm" class="form-grid">
                 <input type="hidden" name="id">
+                <input type="hidden" name="display_order">
                 <div class="field full"><label>Title<input required name="title"></label></div>
                 <div class="field full"><label>Summary<textarea required name="summary" rows="4"></textarea></label></div>
                 <div class="field"><label>Publication date<input required name="published_at" type="date"></label></div>
@@ -68,7 +69,10 @@
             </div>
           </article>
           <article class="card">
-            <div class="card-heading"><div><h2>Project updates</h2><p>Edit, hide, or remove updates.</p></div></div>
+            <div class="card-heading with-tools">
+              <div><h2>Project updates</h2><p id="updateOrderNote">Top to bottom is the order on the website.</p></div>
+              <span class="list-count" id="updateCount"></span>
+            </div>
             <div class="card-body"><div class="admin-list" id="updateAdminList"></div></div>
           </article>
         </div>
@@ -76,19 +80,23 @@
 
       <section class="panel" id="peoplePanel" role="tabpanel">
         <div class="panel-grid">
-          <article class="card">
-            <div class="card-heading"><div><h2 id="personFormTitle">Add person</h2><p>Manage student team members and academic advisors in one list.</p></div></div>
+          <article class="card form-card">
+            <div class="card-heading"><div><h2 id="personFormTitle">Add person</h2><p id="personFormHint">New people are added to the end of their section.</p></div></div>
             <div class="card-body">
               <form id="personForm" class="form-grid">
                 <input type="hidden" name="id">
                 <input type="hidden" name="image_path">
+                <input type="hidden" name="display_order">
                 <div class="field"><label>Category<select name="kind"><option value="team">Team member</option><option value="advisor">Academic advisor</option></select></label></div>
-                <div class="field"><label>Display order<input name="display_order" type="number" min="1" value="10"></label></div>
+                <div class="field"><label>Section<select name="department">
+                  <option value="Leadership">Executive Team</option>
+                  <option value="Electrical">Electrical</option>
+                  <option value="Mechanical">Mechanical</option>
+                </select><small class="field-note">Which heading they appear under on the website.</small></label></div>
                 <div class="field"><label>Name<input required name="name"></label></div>
-                <div class="field"><label>Role<input required name="role"></label></div>
-                <div class="field"><label>Department<input name="department"></label></div>
-                <div class="field"><label>Profile URL<input name="profile_url" type="url" placeholder="https://"></label></div>
-                <div class="field full"><label>Short biography<textarea name="bio" rows="4"></textarea></label></div>
+                <div class="field"><label>Role<input required name="role" placeholder="Head of Electrical"></label></div>
+                <div class="field full"><label>Profile URL<input name="profile_url" type="url" placeholder="https://"><small class="field-note">Optional. Adds a link from their name.</small></label></div>
+                <div class="field full"><label>Short biography<textarea name="bio" rows="3"></textarea></label></div>
                 <div class="field"><label>Headshot URL<input name="image_url" type="url" placeholder="https://"></label></div>
                 <div class="field"><label>Or upload headshot<input name="image_file" type="file" accept="image/png,image/jpeg,image/webp"></label></div>
                 <div class="file-preview hidden full" id="personPreview"></div>
@@ -99,25 +107,28 @@
             </div>
           </article>
           <article class="card">
-            <div class="card-heading"><div><h2>People</h2><p>Headshots, names, roles, ordering, and visibility.</p></div></div>
-            <div class="card-body"><div class="admin-list" id="personAdminList"></div></div>
+            <div class="card-heading with-tools">
+              <div><h2>People</h2><p>Grouped exactly as they appear on the website. Use the arrows to reorder.</p></div>
+              <input class="list-search" id="personSearch" type="search" placeholder="Search people" aria-label="Search people">
+            </div>
+            <div class="card-body"><div class="admin-list grouped" id="personAdminList"></div></div>
           </article>
         </div>
       </section>
 
       <section class="panel" id="partnersPanel" role="tabpanel">
         <div class="panel-grid">
-          <article class="card">
+          <article class="card form-card">
             <div class="card-heading"><div><h2 id="partnerFormTitle">Add partner</h2><p>Publish sponsor and supporter recognition.</p></div></div>
             <div class="card-body">
               <form id="partnerForm" class="form-grid">
                 <input type="hidden" name="id">
                 <input type="hidden" name="logo_path">
+                <input type="hidden" name="display_order">
                 <div class="field"><label>Partner name<input required name="name"></label></div>
                 <div class="field"><label>Relationship<select name="tier"><option>Flagship Partner</option><option>Strategic Partner</option><option>Innovation Partner</option><option>Technical Partner</option><option selected>Project Supporter</option></select></label></div>
-                <div class="field"><label>Display order<input name="display_order" type="number" min="1" value="10"></label></div>
-                <div class="field"><label>Website URL<input name="website_url" type="url" placeholder="https://"></label></div>
-                <div class="field full"><label>Description<textarea name="description" rows="4"></textarea></label></div>
+                <div class="field full"><label>Website URL<input name="website_url" type="url" placeholder="https://"></label></div>
+                <div class="field full"><label>Description<textarea name="description" rows="3"></textarea></label></div>
                 <div class="field"><label>Logo URL<input name="logo_url" type="url" placeholder="https://"></label></div>
                 <div class="field"><label>Or upload logo<input name="logo_file" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"></label></div>
                 <div class="file-preview hidden full" id="partnerPreview"></div>
@@ -128,7 +139,10 @@
             </div>
           </article>
           <article class="card">
-            <div class="card-heading"><div><h2>Partners</h2><p>Edit recognition, logos, visibility, and order.</p></div></div>
+            <div class="card-heading with-tools">
+              <div><h2>Partners</h2><p>Top to bottom is the order on the website.</p></div>
+              <span class="list-count" id="partnerCount"></span>
+            </div>
             <div class="card-body"><div class="admin-list" id="partnerAdminList"></div></div>
           </article>
         </div>

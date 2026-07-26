@@ -70,17 +70,48 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(7,133,154,.1
 .form-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
 .check { display: flex; align-items: center; gap: 9px; color: var(--navy); font-size: 15px; font-weight: 700; }
 .check input { width: auto; }
-.admin-list { display: grid; gap: 10px; }
-.admin-item { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
-.admin-item:last-child { border-bottom: 0; }
-.admin-thumb { display: grid; width: 56px; height: 56px; place-items: center; overflow: hidden; background: var(--pale); color: var(--navy); font-size: 15px; font-weight: 700; text-align: center; }
+/* Content lists ---------------------------------------------------------- */
+/* The list mirrors the website: same sections, same order, top to bottom. The
+   arrow column is fixed width so rows stay aligned whether or not a row can
+   move, and the row never reflows as you reorder. */
+
+.card-heading.with-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
+.list-search { width: auto; min-width: 190px; padding: 8px 11px; font-size: 15px; }
+.list-count { color: var(--muted); font-size: 14px; font-weight: 700; white-space: nowrap; }
+
+.admin-list { display: grid; gap: 4px; }
+.admin-list.grouped { gap: 22px; }
+.list-group { display: grid; gap: 2px; }
+.list-group-head { display: flex; align-items: baseline; gap: 9px; margin: 0 0 6px; color: var(--teal); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.list-group-head span { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; }
+
+.admin-item { display: grid; grid-template-columns: 30px 48px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 8px; border: 1px solid transparent; border-bottom-color: var(--line); }
+.admin-item:last-child { border-bottom-color: transparent; }
+.admin-item:hover { border-color: var(--line); background: var(--paper); }
+.admin-item.is-hidden .admin-thumb, .admin-item.is-hidden .item-body { opacity: .55; }
+
+.item-order { display: grid; gap: 2px; }
+.item-order.is-off { visibility: hidden; }
+.order-btn { display: grid; width: 28px; height: 21px; place-items: center; padding: 0; border: 1px solid var(--line); background: var(--white); color: var(--navy); font-size: 12px; line-height: 1; }
+.order-btn:hover:not(:disabled) { border-color: var(--teal); background: var(--teal); color: var(--white); }
+.order-btn:disabled { color: #b8ccd3; cursor: default; }
+
+.admin-thumb { display: grid; width: 48px; height: 48px; place-items: center; overflow: hidden; background: var(--pale); color: var(--navy); font-size: 13px; font-weight: 700; text-align: center; }
 .admin-thumb img { width: 100%; height: 100%; object-fit: cover; }
-.admin-item p { margin: 2px 0 0; color: var(--muted); font-size: 15px; }
-.item-meta { display: block; margin-top: 5px; color: var(--teal); font-size: 13px; font-weight: 700; }
-.item-actions { display: flex; gap: 7px; }
-.item-actions button { padding: 7px 9px; border: 1px solid var(--line); background: var(--white); color: var(--navy); font-size: 14px; font-weight: 700; }
+.item-body { min-width: 0; }
+.item-body h4 { margin: 0; color: var(--navy); font-size: 16px; line-height: 1.25; }
+.admin-item p { margin: 1px 0 0; overflow: hidden; color: var(--muted); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.item-flag { display: inline-block; margin-top: 4px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.item-flag.is-live { color: var(--teal); }
+.item-actions { display: flex; gap: 6px; }
+.item-actions button { padding: 6px 9px; border: 1px solid var(--line); background: var(--white); color: var(--navy); font-size: 13px; font-weight: 700; }
 .item-actions button:hover { border-color: var(--teal); background: var(--pale); }
 .item-actions .delete { color: var(--danger); }
+.item-actions .delete:hover { border-color: var(--danger); background: #fbeded; }
+
+/* The form column stays alongside a long list instead of scrolling away. */
+.form-card { position: sticky; top: 96px; }
+.form-card.is-editing { box-shadow: 0 0 0 2px var(--teal), 0 12px 30px rgba(6,44,60,.07); }
 .empty { padding: 20px 0; color: var(--muted); }
 .file-preview { display: flex; align-items: center; gap: 12px; padding: 11px; border: 1px solid var(--line); background: var(--pale); color: var(--muted); font-size: 15px; }
 .file-preview img { width: 64px; height: 64px; object-fit: cover; }
@@ -191,6 +222,8 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(7,133,154,.1
 
 @media (max-width: 900px) {
   .panel-grid { grid-template-columns: 1fr; }
+  /* Stacked, a sticky form would sit on top of the list it belongs to. */
+  .form-card { position: static; }
   .portal-intro { align-items: start; flex-direction: column; }
   .analytics-filters { align-items: stretch; flex-direction: column; }
   .visit-detail { grid-template-columns: 1fr; }
@@ -204,9 +237,11 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(7,133,154,.1
   .login-view { min-height: calc(100vh - 160px); }
   .portal-intro, .card-heading, .card-body { padding: 22px; }
   .form-grid { grid-template-columns: 1fr; }
-  .admin-item { grid-template-columns: 48px minmax(0, 1fr); }
-  .admin-thumb { width: 48px; height: 48px; }
-  .item-actions { grid-column: 2; }
+  .admin-item { grid-template-columns: 30px 44px minmax(0, 1fr); }
+  .admin-thumb { width: 44px; height: 44px; }
+  .item-actions { grid-column: 2 / -1; }
+  .card-heading.with-tools { align-items: stretch; flex-direction: column; }
+  .list-search { width: 100%; }
   .tabs { display: grid; grid-template-columns: 1fr 1fr; }
   .tab { border-bottom: 1px solid var(--line); }
   .analytics-toolbar { width: 100%; }

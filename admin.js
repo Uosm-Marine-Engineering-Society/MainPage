@@ -9,6 +9,11 @@
   const client = configured ? window.supabase.createClient(config.url, config.publishableKey) : null;
   let remoteMode = false;
   let state;
+  let personFilter = "";
+  // project_updates gained display_order after the first release. Databases that
+  // have not run the latest schema.sql yet keep working: the column is probed
+  // once, and when it is missing the admin sorts by date and never writes it.
+  let updatesOrderable = true;
 
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -74,6 +79,15 @@
     toast.timer = setTimeout(() => { element.className = "toast"; }, 3200);
   }
 
+  // One cheap probe rather than trusting the schema: asking for the column is
+  // the only reliable way to know it is there, and it works on an empty table.
+  async function detectUpdateOrdering() {
+    if (!remoteMode) { updatesOrderable = true; return; }
+    const probe = await client.from("project_updates").select("display_order").limit(1);
+    updatesOrderable = !probe.error;
+    if (probe.error) console.warn("project_updates.display_order is missing; ordering updates by date. Run the latest schema.sql to enable manual ordering.");
+  }
+
   async function loadRemote() {
     const [people, projectUpdates, partners, settings] = await Promise.all([
       client.from("people").select("*").order("display_order"),
@@ -131,23 +145,226 @@
     return url ? `<img src="${esc(url)}" alt="">` : esc(initials(name));
   }
 
-  function listRows(items, render, emptyText) {
-    return items.length ? items.map(render).join("") : `<div class="empty">${esc(emptyText)}</div>`;
+  // ---- Ordering -----------------------------------------------------------
+  // display_order is the column the website sorts by, so the arrows in the list
+  // rewrite it. Sections and their order mirror personDepartment()/renderPeople()
+  // in app.js: what the admin shows is the order the website will render.
+
+  const TEAM_SECTIONS = ["Executive Team", "Electrical", "Mechanical"];
+  const isAdvisor = (person) => (person.kind || "team") === "advisor";
+  const byOrder = (a, b) => (Number(a.display_order) || 999) - (Number(b.display_order) || 999);
+  const nextOrder = (rows) => rows.reduce((top, row) => Math.max(top, Number(row.display_order) || 0), 0) + 1;
+
+  function personSection(person) {
+    if (isAdvisor(person)) return "Academic advisors";
+    const value = String(person.department || "").toLowerCase();
+    if (value.includes("electrical")) return "Electrical";
+    if (value.includes("mechanical")) return "Mechanical";
+    if (value.includes("leadership") || value.includes("operations") || value.includes("technical")) return "Executive Team";
+    return person.department || "Team";
+  }
+
+  function peopleSections() {
+    const team = state.people.filter((person) => !isAdvisor(person)).sort(byOrder);
+    const advisors = state.people.filter(isAdvisor).sort(byOrder);
+    const groups = new Map();
+    team.forEach((person) => {
+      const key = personSection(person);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(person);
+    });
+    const names = [
+      ...TEAM_SECTIONS.filter((name) => groups.has(name)),
+      ...[...groups.keys()].filter((name) => !TEAM_SECTIONS.includes(name))
+    ];
+    const sections = names.map((name) => [name, groups.get(name)]);
+    if (advisors.length) sections.push(["Academic advisors", advisors]);
+    return sections;
+  }
+
+  function orderedUpdates() {
+    // Matches renderUpdates() in app.js: manual order first, newest date second.
+    return [...state.project_updates].sort((a, b) =>
+      (updatesOrderable ? (Number(a.display_order) || 0) - (Number(b.display_order) || 0) : 0)
+      || new Date(b.published_at) - new Date(a.published_at));
+  }
+
+  const orderedPartners = () => [...state.partners].sort(byOrder);
+
+  // ---- List rendering -----------------------------------------------------
+
+  function moveButtons(scope, id, first, last, enabled = true) {
+    if (!enabled) return `<div class="item-order is-off"></div>`;
+    const button = (direction, label, glyph, off) =>
+      `<button class="order-btn" type="button" data-move="${scope}" data-move-id="${esc(id)}" data-dir="${direction}"${off ? " disabled" : ""} aria-label="${label}" title="${label}">${glyph}</button>`;
+    return `<div class="item-order">${button(-1, "Move up", "↑", first)}${button(1, "Move down", "↓", last)}</div>`;
+  }
+
+  function itemActions(table, id, active) {
+    const hidden = active === false;
+    return `<div class="item-actions">
+      <button type="button" data-toggle-table="${table}" data-toggle-id="${esc(id)}">${hidden ? "Show" : "Hide"}</button>
+      <button type="button" data-edit-table="${table}" data-edit-id="${esc(id)}">Edit</button>
+      <button class="delete" type="button" data-delete-table="${table}" data-delete-id="${esc(id)}">Delete</button>
+    </div>`;
+  }
+
+  function adminRow({ scope, table, id, thumb, title, sub, active, first, last, orderable = true, flag = "" }) {
+    const hidden = active === false;
+    return `<article class="admin-item${hidden ? " is-hidden" : ""}">
+      ${moveButtons(scope, id, first, last, orderable)}
+      <div class="admin-thumb">${thumb}</div>
+      <div class="item-body">
+        <h4>${esc(title)}</h4>
+        <p>${esc(sub || "")}</p>
+        ${hidden ? `<span class="item-flag">Hidden from website</span>` : flag}
+      </div>
+      ${itemActions(table, id, active)}
+    </article>`;
   }
 
   function renderPeople() {
-    const rows = [...state.people].sort((a, b) => (a.kind || "team").localeCompare(b.kind || "team") || (Number(a.display_order) || 999) - (Number(b.display_order) || 999));
-    $("#personAdminList").innerHTML = listRows(rows, (person) => `<article class="admin-item"><div class="admin-thumb">${thumbnail(person.image_url, person.name)}</div><div><h3>${esc(person.name)}</h3><p>${esc(person.role)}</p><span class="item-meta">${person.kind === "advisor" ? "Academic advisor" : "Team member"} · ${person.active === false ? "Hidden" : "Visible"} · order ${esc(person.display_order)}</span></div><div class="item-actions"><button type="button" data-edit-person="${esc(person.id)}">Edit</button><button class="delete" type="button" data-delete-table="people" data-delete-id="${esc(person.id)}">Delete</button></div></article>`, "No people yet.");
+    const needle = personFilter.trim().toLowerCase();
+    const sections = peopleSections();
+    // Searching hides rows, which would make the arrows jump over people who are
+    // still there but filtered out — so reordering is only offered unfiltered.
+    const orderable = !needle;
+    const html = sections.map(([name, members]) => {
+      const shown = needle
+        ? members.filter((person) => `${person.name} ${person.role} ${person.department}`.toLowerCase().includes(needle))
+        : members;
+      if (!shown.length) return "";
+      const rows = shown.map((person) => adminRow({
+        scope: "people",
+        table: "people",
+        id: person.id,
+        thumb: thumbnail(person.image_url, person.name),
+        title: person.name,
+        sub: person.role,
+        active: person.active,
+        first: members.indexOf(person) === 0,
+        last: members.indexOf(person) === members.length - 1,
+        orderable
+      })).join("");
+      return `<section class="list-group"><h3 class="list-group-head">${esc(name)}<span>${shown.length}${needle ? ` of ${members.length}` : ""}</span></h3>${rows}</section>`;
+    }).join("");
+
+    $("#personAdminList").innerHTML = html
+      || `<div class="empty">${needle ? "Nobody matches that search." : "No people yet."}</div>`;
   }
 
   function renderUpdates() {
-    const rows = [...state.project_updates].sort((a, b) => new Date(b.published_at) - new Date(a.published_at));
-    $("#updateAdminList").innerHTML = listRows(rows, (item) => `<article class="admin-item"><div class="admin-thumb">NEWS</div><div><h3>${esc(item.title)}</h3><p>${esc(item.summary)}</p><span class="item-meta">${esc(item.published_at)} · ${item.active === false ? "Hidden" : "Visible"}</span></div><div class="item-actions"><button type="button" data-edit-update="${esc(item.id)}">Edit</button><button class="delete" type="button" data-delete-table="project_updates" data-delete-id="${esc(item.id)}">Delete</button></div></article>`, "No project updates yet.");
+    const rows = orderedUpdates();
+    const note = $("#updateOrderNote");
+    if (note) {
+      note.textContent = updatesOrderable
+        ? "Top to bottom is the order on the website, which shows the first three visible updates."
+        : "Ordered by publication date. Run the latest schema.sql to arrange these by hand.";
+    }
+    $("#updateCount").textContent = rows.length ? `${rows.length} update${rows.length === 1 ? "" : "s"}` : "";
+    $("#updateAdminList").innerHTML = rows.length ? rows.map((item, index) => {
+      const live = rows.filter((row) => row.active !== false).indexOf(item);
+      return adminRow({
+        scope: "project_updates",
+        table: "project_updates",
+        id: item.id,
+        thumb: "NEWS",
+        title: item.title,
+        sub: item.summary,
+        active: item.active,
+        first: index === 0,
+        last: index === rows.length - 1,
+        orderable: updatesOrderable,
+        flag: live > -1 && live < 3 ? `<span class="item-flag is-live">On the website</span>` : `<span class="item-flag">Not in the top three</span>`
+      });
+    }).join("") : `<div class="empty">No project updates yet.</div>`;
   }
 
   function renderPartners() {
-    const rows = [...state.partners].sort((a, b) => (Number(a.display_order) || 999) - (Number(b.display_order) || 999));
-    $("#partnerAdminList").innerHTML = listRows(rows, (partner) => `<article class="admin-item"><div class="admin-thumb">${thumbnail(partner.logo_url, partner.name)}</div><div><h3>${esc(partner.name)}</h3><p>${esc(partner.description || "")}</p><span class="item-meta">${esc(partner.tier)} · ${partner.active === false ? "Hidden" : "Visible"} · order ${esc(partner.display_order)}</span></div><div class="item-actions"><button type="button" data-edit-partner="${esc(partner.id)}">Edit</button><button class="delete" type="button" data-delete-table="partners" data-delete-id="${esc(partner.id)}">Delete</button></div></article>`, "No partners yet.");
+    const rows = orderedPartners();
+    $("#partnerCount").textContent = rows.length ? `${rows.length} partner${rows.length === 1 ? "" : "s"}` : "";
+    $("#partnerAdminList").innerHTML = rows.length ? rows.map((partner, index) => adminRow({
+      scope: "partners",
+      table: "partners",
+      id: partner.id,
+      thumb: thumbnail(partner.logo_url, partner.name),
+      title: partner.name,
+      sub: partner.tier,
+      active: partner.active,
+      first: index === 0,
+      last: index === rows.length - 1
+    })).join("") : `<div class="empty">No partners yet.</div>`;
+  }
+
+  // ---- Ordering and visibility writes -------------------------------------
+
+  // A targeted column update, not a full-row upsert: reordering or hiding must
+  // never rewrite a name, a biography or an uploaded image it did not touch.
+  async function patchRow(table, id, patch) {
+    if (remoteMode) {
+      const result = await client.from(table).update(patch).eq("id", id);
+      if (result.error) throw result.error;
+    }
+    const row = state[table].find((item) => item.id === id);
+    if (row) Object.assign(row, patch);
+    if (!remoteMode) saveLocal();
+  }
+
+  // Renumbers a whole category 1..N, which also repairs the duplicate values the
+  // seed data ships with (team and advisors both start at 1). Only rows whose
+  // number actually changed are written.
+  async function renumber(table, ordered) {
+    const writes = ordered
+      .map((row, index) => [row, index + 1])
+      .filter(([row, order]) => Number(row.display_order) !== order);
+    for (const [row, order] of writes) await patchRow(table, row.id, { display_order: order });
+  }
+
+  async function moveItem(scope, id, delta) {
+    try {
+      if (scope === "people") {
+        const person = state.people.find((row) => row.id === id);
+        if (!person) return;
+        // Reordering happens inside a section; the website groups by department
+        // after sorting, so swapping two members' numbers moves them relative to
+        // each other without disturbing anyone else.
+        const peers = state.people.filter((row) => isAdvisor(row) === isAdvisor(person)).sort(byOrder);
+        const section = personSection(person);
+        const slots = peers.map((row, index) => ({ row, index })).filter(({ row }) => personSection(row) === section);
+        const at = slots.findIndex(({ row }) => row.id === id);
+        const swap = slots[at + delta];
+        if (!swap) return;
+        const here = slots[at].index;
+        [peers[here], peers[swap.index]] = [peers[swap.index], peers[here]];
+        await renumber("people", peers);
+        renderPeople();
+        return;
+      }
+      const ordered = scope === "project_updates" ? orderedUpdates() : orderedPartners();
+      const at = ordered.findIndex((row) => row.id === id);
+      const target = at + delta;
+      if (at < 0 || target < 0 || target >= ordered.length) return;
+      [ordered[at], ordered[target]] = [ordered[target], ordered[at]];
+      await renumber(scope, ordered);
+      if (scope === "project_updates") renderUpdates();
+      else renderPartners();
+    } catch (error) {
+      toast(error?.message || "Could not change the order.", true);
+    }
+  }
+
+  async function toggleVisible(table, id) {
+    const row = state[table].find((item) => item.id === id);
+    if (!row) return;
+    // Read the target state before the patch: patchRow mutates `row` in place.
+    const nextActive = row.active === false;
+    try {
+      await patchRow(table, id, { active: nextActive });
+      renderAll();
+      toast(nextActive ? "Now visible on the website." : "Hidden from the website.");
+    } catch (error) {
+      toast(error?.message || "Could not change visibility.", true);
+    }
   }
 
   let analytics = { sessions: [], events: new Map(), outreach: [], loaded: false };
@@ -543,20 +760,31 @@
     fillSettings();
   }
 
+  // Marks the form card so it is obvious you are editing an existing entry
+  // rather than about to create a second one, and turns Clear into Cancel.
+  function setEditing(form, editing, title) {
+    const card = form.closest(".form-card");
+    if (card) card.classList.toggle("is-editing", editing);
+    const clear = form.querySelector("[data-reset]");
+    if (clear) clear.textContent = editing ? "Cancel" : "Clear";
+    const heading = form.closest(".card")?.querySelector("h2");
+    if (heading && title) heading.textContent = title;
+  }
+
   function resetForm(id) {
     const form = document.getElementById(id);
     form.reset();
     if (form.elements.id) form.elements.id.value = "";
     if (form.elements.image_path) form.elements.image_path.value = "";
     if (form.elements.logo_path) form.elements.logo_path.value = "";
-    if (form.elements.display_order) form.elements.display_order.value = 10;
+    if (form.elements.display_order) form.elements.display_order.value = "";
     if (form.elements.active) form.elements.active.checked = true;
     if (id === "updateForm") form.elements.published_at.value = new Date().toISOString().slice(0, 10);
     const preview = id === "personForm" ? $("#personPreview") : id === "partnerForm" ? $("#partnerPreview") : null;
     if (preview) { preview.innerHTML = ""; preview.classList.add("hidden"); }
-    if (id === "personForm") $("#personFormTitle").textContent = "Add person";
-    if (id === "partnerForm") $("#partnerFormTitle").textContent = "Add partner";
-    if (id === "updateForm") $("#updateFormTitle").textContent = "Add project update";
+    if (id === "personForm") { setEditing(form, false, "Add person"); syncPersonKind(); }
+    if (id === "partnerForm") setEditing(form, false, "Add partner");
+    if (id === "updateForm") setEditing(form, false, "Add project update");
     if (id === "outreachForm") {
       $("#outreachFormTitle").textContent = "Add sponsor to track";
       $("#outreachLinkPreview").hidden = true;
@@ -579,9 +807,24 @@
       if (field.type === "checkbox") field.checked = value !== false;
       else field.value = value ?? "";
     });
-    if (formId === "#personForm") { $("#personFormTitle").textContent = "Edit person"; previewMedia($("#personPreview"), data.image_url, data.name); }
-    if (formId === "#partnerForm") { $("#partnerFormTitle").textContent = "Edit partner"; previewMedia($("#partnerPreview"), data.logo_url, data.name); }
-    if (formId === "#updateForm") $("#updateFormTitle").textContent = "Edit project update";
+    if (formId === "#personForm") {
+      // The chooser lists the three sections the website styles, but older rows
+      // may carry something else. Keep that value selectable so opening someone
+      // for an unrelated edit never quietly moves them to another section.
+      const section = form.elements.department;
+      if (data.department && ![...section.options].some((option) => option.value === data.department)) {
+        section.add(new Option(data.department, data.department));
+        section.value = data.department;
+      }
+      syncPersonKind();
+      setEditing(form, true, `Edit ${data.name || "person"}`);
+      previewMedia($("#personPreview"), data.image_url, data.name);
+    }
+    if (formId === "#partnerForm") {
+      setEditing(form, true, `Edit ${data.name || "partner"}`);
+      previewMedia($("#partnerPreview"), data.logo_url, data.name);
+    }
+    if (formId === "#updateForm") setEditing(form, true, "Edit project update");
     form.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -697,6 +940,7 @@
         throw new Error("This account is not approved to manage website content.");
       }
       remoteMode = true;
+      await detectUpdateOrdering();
       await loadRemote();
       showPortal();
     } catch (error) {
@@ -749,6 +993,11 @@
     const form = event.currentTarget;
     const data = dataFromForm(form);
     const row = { id: data.id || newId(), title: data.title.trim(), summary: data.summary.trim(), published_at: data.published_at, link_url: data.link_url.trim(), active: form.elements.active.checked };
+    // Only sent when the column exists, so a database still on the older schema
+    // saves updates exactly as it did before.
+    if (updatesOrderable) {
+      row.display_order = Number(data.display_order) || nextOrder(state.project_updates);
+    }
     try {
       await saveRow("project_updates", row);
       resetForm("updateForm");
@@ -767,7 +1016,14 @@
     const previous = state.people.find((person) => person.id === id);
     try {
       const media = await resolveMedia(form.elements.image_file, data.image_url || "", previous?.image_url || "", previous?.image_path || data.image_path, "people", id);
-      const row = { id, kind: data.kind, name: data.name.trim(), role: data.role.trim(), department: data.department.trim(), bio: data.bio.trim(), image_url: media.url, image_path: media.path, profile_url: data.profile_url.trim(), display_order: Number(data.display_order) || 10, active: form.elements.active.checked };
+      // A new person, or one moved between team and advisors, goes to the end of
+      // that category. Otherwise the order set by the list arrows is preserved.
+      const advisor = data.kind === "advisor";
+      const moved = !previous || isAdvisor(previous) !== advisor;
+      const order = moved
+        ? nextOrder(state.people.filter((person) => isAdvisor(person) === advisor))
+        : Number(data.display_order) || Number(previous.display_order) || 10;
+      const row = { id, kind: data.kind, name: data.name.trim(), role: data.role.trim(), department: advisor ? "" : data.department.trim(), bio: data.bio.trim(), image_url: media.url, image_path: media.path, profile_url: data.profile_url.trim(), display_order: order, active: form.elements.active.checked };
       await saveRow("people", row);
       if (media.oldPath && media.oldPath !== media.path) await removeStorage(media.oldPath);
       resetForm("personForm");
@@ -786,7 +1042,8 @@
     const previous = state.partners.find((partner) => partner.id === id);
     try {
       const media = await resolveMedia(form.elements.logo_file, data.logo_url || "", previous?.logo_url || "", previous?.logo_path || data.logo_path, "partners", id);
-      const row = { id, name: data.name.trim(), tier: data.tier, description: data.description.trim(), logo_url: media.url, logo_path: media.path, website_url: data.website_url.trim(), display_order: Number(data.display_order) || 10, active: form.elements.active.checked };
+      const order = previous ? Number(data.display_order) || Number(previous.display_order) || 10 : nextOrder(state.partners);
+      const row = { id, name: data.name.trim(), tier: data.tier, description: data.description.trim(), logo_url: media.url, logo_path: media.path, website_url: data.website_url.trim(), display_order: order, active: form.elements.active.checked };
       await saveRow("partners", row);
       if (media.oldPath && media.oldPath !== media.path) await removeStorage(media.oldPath);
       resetForm("partnerForm");
@@ -913,12 +1170,17 @@
       renderVisits();
       return;
     }
-    const editPerson = event.target.closest("[data-edit-person]");
-    if (editPerson) { const row = state.people.find((person) => person.id === editPerson.dataset.editPerson); if (row) fillForm("#personForm", row); return; }
-    const editUpdate = event.target.closest("[data-edit-update]");
-    if (editUpdate) { const row = state.project_updates.find((item) => item.id === editUpdate.dataset.editUpdate); if (row) fillForm("#updateForm", row); return; }
-    const editPartner = event.target.closest("[data-edit-partner]");
-    if (editPartner) { const row = state.partners.find((partner) => partner.id === editPartner.dataset.editPartner); if (row) fillForm("#partnerForm", row); return; }
+    const move = event.target.closest("[data-move]");
+    if (move) { await moveItem(move.dataset.move, move.dataset.moveId, Number(move.dataset.dir)); return; }
+    const toggle = event.target.closest("[data-toggle-table]");
+    if (toggle) { await toggleVisible(toggle.dataset.toggleTable, toggle.dataset.toggleId); return; }
+    const edit = event.target.closest("[data-edit-table]");
+    if (edit) {
+      const forms = { people: "#personForm", project_updates: "#updateForm", partners: "#partnerForm" };
+      const row = state[edit.dataset.editTable].find((item) => item.id === edit.dataset.editId);
+      if (row) fillForm(forms[edit.dataset.editTable], row);
+      return;
+    }
     const clearMedia = event.target.closest("[data-clear-media]");
     if (clearMedia) {
       const person = clearMedia.dataset.clearMedia === "person";
@@ -938,6 +1200,23 @@
     } catch (error) {
       toast(error?.message || "Could not delete item.", true);
     }
+  });
+
+  // Advisors are listed under their own heading on the website and never carry a
+  // department, so the Section chooser only applies to team members.
+  function syncPersonKind() {
+    const form = $("#personForm");
+    const advisor = form.elements.kind.value === "advisor";
+    form.elements.department.closest(".field").classList.toggle("hidden", advisor);
+    $("#personFormHint").textContent = advisor
+      ? "Advisors appear under “Academic advisors”, in the order set by the arrows."
+      : "New people are added to the end of their section.";
+  }
+
+  $("#personForm").elements.kind.addEventListener("change", syncPersonKind);
+  $("#personSearch").addEventListener("input", (event) => {
+    personFilter = event.target.value;
+    renderPeople();
   });
 
   bindTabs();
@@ -961,7 +1240,8 @@
       const session = await client.auth.getSession();
       if (session.data.session && await hasAdminAccess()) {
         remoteMode = true;
-        await loadRemote();
+        await detectUpdateOrdering();
+      await loadRemote();
         showPortal();
       } else {
         if (session.data.session) await client.auth.signOut();

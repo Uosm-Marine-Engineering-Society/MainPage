@@ -9,7 +9,14 @@
   --navy: #093c50;
   --navy-deep: #062c3c;
   --navy-mid: #0d4c62;
-  --teal: #07859a;
+  /* Darkened from the original #07859a: that shade cleared only 3.97:1 on --pale
+     and 4.27:1 on --paper, short of AA (4.5:1) for the normal-size teal labels
+     and links used throughout. Solved against the worst real composite, not just
+     the flat tokens — the project-brief card is --pale at 96% opacity over the
+     hero water band, which measured a full point darker than flat --pale on
+     screen. This clears 4.5:1 against that with margin, and only improves the
+     white-on-teal button cases. */
+  --teal: #067587;
   --teal-light: #70c2cd;
   /* Lifted teal for small caps over the water bands: --teal-light only reaches
      3.3:1 against the lightest part of the photograph, short of AA at 10.5px. */

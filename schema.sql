@@ -62,9 +62,16 @@ create table if not exists public.project_updates (
   summary text not null,
   published_at date not null default current_date,
   link_url text not null default '',
+  display_order integer not null default 10 check (display_order > 0),
   active boolean not null default true,
   updated_at timestamptz not null default now()
 );
+
+-- Added after the first release, so existing databases need it too. While every
+-- row shares the default the website falls back to publication date, which is
+-- exactly how updates were ordered before this column existed.
+alter table public.project_updates
+  add column if not exists display_order integer not null default 10 check (display_order > 0);
 
 create table if not exists public.partners (
   id uuid primary key default gen_random_uuid(),
