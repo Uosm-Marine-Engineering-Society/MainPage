@@ -156,6 +156,12 @@
     $("#partnerAdminList").innerHTML = listRows(rows, (partner) => `<article class="admin-item"><div class="admin-thumb">${thumbnail(partner.logo_url, partner.name)}</div><div><h3>${esc(partner.name)}</h3><p>${esc(partner.description || "")}</p><span class="item-meta">${esc(partner.tier)} · ${partner.active === false ? "Hidden" : "Visible"} · order ${esc(partner.display_order)}</span></div><div class="item-actions"><button type="button" data-edit-partner="${esc(partner.id)}">Edit</button><button class="delete" type="button" data-delete-table="partners" data-delete-id="${esc(partner.id)}">Delete</button></div></article>`, "No partners yet.");
   }
 
+  let analytics = { sessions: [], events: new Map(), outreach: [], loaded: false };
+  const expandedVisits = new Set();
+
+  const analyticsDays = () => Number($("#analyticsRange").value) || 30;
+  const hidesBots = () => $("#analyticsHideBots").checked;
+
   function analyticsDuration(seconds) {
     const total = Math.max(0, Math.round(seconds || 0));
     if (total < 60) return `${total}s`;
@@ -164,112 +170,365 @@
     return remainder ? `${minutes}m ${remainder}s` : `${minutes}m`;
   }
 
-  function analyticsSource(event) {
-    if (event.utm_source) return `${event.utm_source}${event.utm_medium ? ` · ${event.utm_medium}` : ""}`;
-    if (!event.referrer) return "Direct / unknown";
-    try { return new URL(event.referrer).hostname.replace(/^www\./, "") || "Direct / unknown"; }
-    catch { return event.referrer; }
+  function shortTime(value) {
+    if (!value) return "—";
+    return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
   }
 
-  function analyticsEventName(type) {
+  function sinceNow(value) {
+    if (!value) return "—";
+    const minutes = Math.round((Date.now() - new Date(value).getTime()) / 60000);
+    if (minutes < 1) return "just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    if (minutes < 1440) return `${Math.round(minutes / 60)}h ago`;
+    return `${Math.round(minutes / 1440)}d ago`;
+  }
+
+  const daysSince = (value) => (value ? Math.floor((Date.now() - new Date(value).getTime()) / 86400000) : null);
+
+  function flagFor(code) {
+    const value = String(code || "").toUpperCase();
+    if (!/^[A-Z]{2}$/.test(value)) return "";
+    return String.fromCodePoint(...[...value].map((letter) => 127397 + letter.charCodeAt(0)));
+  }
+
+  function siteLinkFor(code) {
+    const base = location.href.replace(/admin\.html.*$/, "").replace(/[?#].*$/, "");
+    return `${base}?s=${encodeURIComponent(code)}`;
+  }
+
+  function placeOf(session) {
+    const parts = [session.city, session.region, session.country].map((part) => (part || "").trim()).filter(Boolean);
+    const unique = parts.filter((part, index) => parts.indexOf(part) === index);
+    if (!unique.length) return session.edge_country ? `${flagFor(session.edge_country)} ${session.edge_country}`.trim() : "Location unknown";
+    return `${flagFor(session.country_code || session.edge_country)} ${unique.join(", ")}`.trim();
+  }
+
+  function networkOf(session) {
+    const name = (session.org || session.isp || "").trim();
+    if (!name) return "Network unknown";
+    return session.asn && !name.includes(session.asn) ? `${name} · ${session.asn}` : name;
+  }
+
+  function arrivalOf(session) {
+    if (session.sponsor_code) {
+      const contact = analytics.outreach.find((row) => row.code === session.sponsor_code);
+      return `Sponsor link · ${contact ? contact.organisation : session.sponsor_code}`;
+    }
+    if (session.utm_source) return `${session.utm_source}${session.utm_medium ? ` · ${session.utm_medium}` : ""}`;
+    if (session.referrer_host) return session.referrer_host;
+    return "Direct / typed in";
+  }
+
+  function eventName(type) {
     return ({
       session_start: "Visit started",
       page_view: "Page viewed",
-      section_view: "Section viewed",
-      link_click: "Link clicked",
-      control_click: "Control used",
-      proposal_open: "Proposal opened",
-      email_copy: "Email copied",
-      scroll_depth: "Scroll depth",
-      engagement: "Engaged time"
+      section_view: "Read section",
+      link_click: "Clicked link",
+      control_click: "Used control",
+      proposal_open: "Opened proposal",
+      email_copy: "Copied email address",
+      scroll_depth: "Scrolled",
+      engagement: "Reading"
     })[type] || type;
   }
 
-  function analyticsCount(events, selector) {
+  function visibleSessions() {
+    return analytics.sessions.filter((session) => !(hidesBots() && session.is_bot));
+  }
+
+  function rankBy(rows, selector) {
     const counts = new Map();
-    events.forEach((event) => {
-      const label = selector(event);
+    rows.forEach((row) => {
+      const label = (selector(row) || "").trim();
       if (!label) return;
       counts.set(label, (counts.get(label) || 0) + 1);
     });
     return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   }
 
-  function renderAnalyticsList(target, rows) {
-    $(target).innerHTML = rows.length
-      ? rows.slice(0, 8).map(([label, count]) => `<div class="analytics-list-row"><span title="${esc(label)}">${esc(label)}</span><strong>${esc(count)}</strong></div>`).join("")
-      : `<div class="empty">No data in this period.</div>`;
+  // Ranked magnitude: one measure, one colour, value always printed beside the bar
+  // so the number never depends on reading the bar length or a hover.
+  function renderRankedList(target, rows, emptyText = "Nothing recorded in this period.") {
+    const top = rows.slice(0, 8);
+    const max = Math.max(1, ...top.map(([, count]) => count));
+    $(target).innerHTML = top.length
+      ? top.map(([label, count]) => `<div class="rank-row"><span class="rank-label" title="${esc(label)}">${esc(label)}</span><span class="rank-track"><span class="rank-bar" style="inline-size:${Math.round(count / max * 100)}%"></span></span><strong class="rank-value">${count.toLocaleString()}</strong></div>`).join("")
+      : `<div class="empty">${esc(emptyText)}</div>`;
   }
 
-  function renderAnalytics(events) {
-    const sessions = new Set(events.map((event) => event.session_id).filter(Boolean));
-    const engagement = events.filter((event) => event.event_type === "engagement").reduce((sum, event) => sum + (Number(event.value) || 0), 0);
-    const clicks = events.filter((event) => event.event_type === "link_click").length;
-    const proposals = events.filter((event) => event.event_type === "proposal_open").length;
-    const copies = events.filter((event) => event.event_type === "email_copy").length;
-    const deepScrolls = new Set(events.filter((event) => event.event_type === "scroll_depth" && Number(event.value) >= 75).map((event) => event.session_id)).size;
+  function sponsorSummary(code) {
+    const all = analytics.sessions.filter((session) => session.sponsor_code === code);
+    const human = all.filter((session) => !session.is_bot);
+    const automated = all.filter((session) => session.is_bot);
+    const ordered = [...human].sort((a, b) => new Date(a.started_at) - new Date(b.started_at));
+    return {
+      visits: human.length,
+      automated: automated.length,
+      firstOpen: ordered[0]?.started_at || null,
+      lastSeen: ordered.length ? ordered[ordered.length - 1].last_seen_at : null,
+      engaged: human.reduce((sum, session) => sum + (Number(session.engaged_seconds) || 0), 0),
+      proposals: human.reduce((sum, session) => sum + (Number(session.proposal_opens) || 0), 0),
+      visitors: new Set(human.map((session) => session.visitor_id)).size
+    };
+  }
 
-    $("#analyticsVisits").textContent = sessions.size.toLocaleString();
-    $("#analyticsTime").textContent = analyticsDuration(sessions.size ? engagement / sessions.size : 0);
-    $("#analyticsClicks").textContent = clicks.toLocaleString();
-    $("#analyticsProposals").textContent = proposals.toLocaleString();
-    $("#analyticsCopies").textContent = copies.toLocaleString();
-    $("#analyticsScrolls").textContent = deepScrolls.toLocaleString();
+  // Status is always an icon plus words: the colour repeats the meaning, never carries it.
+  function outreachVerdict(contact, summary) {
+    const waiting = daysSince(contact.emailed_at);
+    if (summary.visits > 0) return { tone: "good", icon: "✓", text: summary.visitors > 1 ? `Opened · ${summary.visitors} people` : "Opened", note: `First open ${shortTime(summary.firstOpen)}` };
+    if (contact.status === "draft" || !contact.emailed_at) return { tone: "idle", icon: "○", text: "Not emailed yet", note: "Send the tracking link to start measuring." };
+    if (summary.automated > 0) return { tone: "serious", icon: "◑", text: "Delivered, not read", note: "Only their mail security scanner followed the link, so the message arrived but nobody has opened it." };
+    if (waiting !== null && waiting >= 7) return { tone: "critical", icon: "✕", text: `Nothing after ${waiting} days`, note: "No visit and no scanner hit. Likely filtered to spam or never delivered — try another address or channel." };
+    return { tone: "warning", icon: "!", text: waiting ? `Quiet for ${waiting} days` : "Sent today", note: "No opens yet. Give it a few days before treating it as undelivered." };
+  }
 
-    const starts = events.filter((event) => event.event_type === "session_start");
-    renderAnalyticsList("#analyticsSources", analyticsCount(starts, analyticsSource));
-    renderAnalyticsList("#analyticsDevices", analyticsCount(starts, (event) => `${event.device || "Unknown device"} · ${event.browser || "Unknown browser"}`));
-    renderAnalyticsList("#analyticsSections", analyticsCount(events.filter((event) => event.event_type === "section_view"), (event) => event.label || event.section));
-    renderAnalyticsList("#analyticsLinks", analyticsCount(events.filter((event) => event.event_type === "link_click"), (event) => event.label || event.target));
-    renderAnalyticsList("#analyticsCampaigns", analyticsCount(starts, (event) => event.utm_campaign || ""));
-    renderAnalyticsList("#analyticsContexts", analyticsCount(starts, (event) => `${event.timezone || "Unknown timezone"} · ${event.language || "Unknown language"}`));
+  function renderSponsors() {
+    // Sponsors actually waiting on a reply come first, newest email at the top;
+    // ones that have not been sent yet sit below them.
+    const rows = [...analytics.outreach].sort((a, b) => {
+      if (Boolean(a.emailed_at) !== Boolean(b.emailed_at)) return a.emailed_at ? -1 : 1;
+      return new Date(b.emailed_at || b.created_at) - new Date(a.emailed_at || a.created_at);
+    });
+    $("#sponsorRows").innerHTML = rows.length ? rows.map((contact) => {
+      const summary = sponsorSummary(contact.code);
+      const verdict = outreachVerdict(contact, summary);
+      const who = `${esc(contact.organisation)}${contact.contact_name ? `<small>${esc(contact.contact_name)}${contact.contact_email ? ` · ${esc(contact.contact_email)}` : ""}</small>` : ""}`;
+      return `<tr>
+        <td class="cell-primary">${who}</td>
+        <td><span class="badge badge-${verdict.tone}" title="${esc(verdict.note)}"><span aria-hidden="true">${verdict.icon}</span>${esc(verdict.text)}</span>${summary.automated && summary.visits ? `<small>+${summary.automated} scanner hit${summary.automated === 1 ? "" : "s"}</small>` : ""}</td>
+        <td>${contact.emailed_at ? esc(new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(new Date(contact.emailed_at))) : "—"}</td>
+        <td class="cell-number">${summary.visits.toLocaleString()}</td>
+        <td>${summary.firstOpen ? esc(shortTime(summary.firstOpen)) : "—"}</td>
+        <td>${summary.lastSeen ? esc(sinceNow(summary.lastSeen)) : "—"}</td>
+        <td class="cell-number">${esc(analyticsDuration(summary.engaged))}</td>
+        <td class="cell-number">${summary.proposals ? `${summary.proposals}×` : "—"}</td>
+        <td><button class="link-button" type="button" data-copy-link="${esc(contact.code)}">Copy link</button></td>
+        <td class="cell-actions"><button type="button" data-edit-outreach="${esc(contact.id)}">Edit</button><button class="delete" type="button" data-delete-outreach="${esc(contact.id)}">Delete</button></td>
+      </tr>`;
+    }).join("") : `<tr><td colspan="10"><div class="empty">No sponsors tracked yet. Add one above, then email that sponsor their link.</div></td></tr>`;
+  }
 
-    $("#analyticsRecent").innerHTML = events.slice(0, 60).map((event) => {
-      const detail = event.event_type === "session_start"
-        ? `${analyticsSource(event)} · ${event.device || "Unknown device"} · ${event.browser || "Unknown browser"} · ${event.timezone || "Unknown timezone"}`
-        : event.label || event.target || event.path || "—";
-      const value = event.event_type === "engagement" ? analyticsDuration(event.value) : event.event_type === "scroll_depth" ? `${event.value}%` : "—";
-      const time = new Intl.DateTimeFormat("en-GB", { dateStyle: "short", timeStyle: "short" }).format(new Date(event.occurred_at));
-      return `<tr><td>${esc(time)}</td><td>${esc(analyticsEventName(event.event_type))}</td><td>${esc(event.section || "—")}</td><td title="${esc(event.target || "")}">${esc(detail)}</td><td>${esc(value)}</td></tr>`;
-    }).join("") || `<tr><td colspan="5">No activity in this period.</td></tr>`;
+  function visitDetail(session) {
+    const events = (analytics.events.get(session.session_id) || []).slice().sort((a, b) => new Date(a.occurred_at) - new Date(b.occurred_at));
+    const facts = [
+      ["Visit started", shortTime(session.started_at)],
+      ["Last activity", `${shortTime(session.last_seen_at)} (${sinceNow(session.last_seen_at)})`],
+      ["Reading time", analyticsDuration(session.engaged_seconds)],
+      ["Scroll depth", `${session.max_scroll || 0}%`],
+      ["Arrived via", arrivalOf(session)],
+      ["Landing page", `${session.entry_path || "/"}${session.landing_query ? `?${session.landing_query}` : ""}`],
+      ["Referrer", session.referrer || "None"],
+      ["Campaign", [session.utm_source, session.utm_medium, session.utm_campaign, session.utm_content, session.utm_term].filter(Boolean).join(" · ") || "None"],
+      ["IP address", session.ip_address || "Not captured"],
+      ["Location", placeOf(session)],
+      ["Postcode", session.postal || "—"],
+      ["Coordinates", session.latitude && session.longitude ? `${Number(session.latitude).toFixed(3)}, ${Number(session.longitude).toFixed(3)}` : "—"],
+      ["Network", networkOf(session)],
+      ["Edge country", session.edge_country || "—"],
+      ["Location source", session.geo_source || "Not resolved"],
+      ["Device", `${session.device || "Unknown"}${session.touch_points ? ` · ${session.touch_points} touch points` : ""}`],
+      ["Browser", `${session.browser || "Unknown"} ${session.browser_version || ""}`.trim()],
+      ["System", `${session.os || "Unknown"} ${session.os_version || ""}`.trim()],
+      ["Platform", session.platform || "—"],
+      ["Screen", `${session.screen_size || "—"}${session.pixel_ratio ? ` @${session.pixel_ratio}×` : ""}${session.color_depth ? ` · ${session.color_depth}-bit` : ""}`],
+      ["Viewport", session.viewport_size || "—"],
+      ["Hardware", [session.cpu_cores ? `${session.cpu_cores} cores` : "", session.device_memory ? `${session.device_memory} GB` : ""].filter(Boolean).join(" · ") || "—"],
+      ["Connection", session.connection || "—"],
+      ["Timezone", session.timezone || "—"],
+      ["Language", session.languages || session.language || "—"],
+      ["Appearance", [session.prefers_dark === true ? "Dark mode" : session.prefers_dark === false ? "Light mode" : "", session.prefers_reduced_motion ? "Reduced motion" : ""].filter(Boolean).join(" · ") || "—"],
+      ["Page load", session.load_ms ? `${session.load_ms} ms` : "—"],
+      ["Visitor", `${session.is_returning ? "Returning" : "First time"} · visit ${session.visit_number} · ${String(session.visitor_id).slice(0, 8)}`],
+      ["Automated", session.is_bot ? "Yes — matched a scanner or bot signature" : "No"],
+      ["User agent", session.user_agent || "—"]
+    ];
+    const timeline = events.map((event) => {
+      const detail = event.label || event.target || event.path || "";
+      const value = event.event_type === "engagement" ? analyticsDuration(event.value) : event.event_type === "scroll_depth" ? `${event.value}%` : "";
+      return `<li><time>${esc(new Intl.DateTimeFormat("en-GB", { timeStyle: "medium" }).format(new Date(event.occurred_at)))}</time><span>${esc(eventName(event.event_type))}</span><em title="${esc(event.target || "")}">${esc(detail)}</em><strong>${esc(value)}</strong></li>`;
+    }).join("");
+    return `<div class="visit-detail">
+      <dl class="visit-facts">${facts.map(([term, value]) => `<div><dt>${esc(term)}</dt><dd title="${esc(value)}">${esc(value)}</dd></div>`).join("")}</dl>
+      <div class="visit-timeline"><h4>What they did</h4><ol>${timeline || "<li>No individual events recorded.</li>"}</ol></div>
+    </div>`;
+  }
 
-    $("#analyticsStats").hidden = false;
-    $("#analyticsBreakdowns").hidden = false;
-    $("#analyticsRecentWrap").hidden = false;
+  function renderVisits() {
+    const filter = $("#visitsFilter").value;
+    const rows = visibleSessions().filter((session) => {
+      if (filter === "sponsor") return Boolean(session.sponsor_code);
+      if (filter === "engaged") return (Number(session.engaged_seconds) || 0) >= 15;
+      if (filter === "proposal") return (Number(session.proposal_opens) || 0) > 0;
+      return true;
+    });
+
+    $("#visitRows").innerHTML = rows.length ? rows.map((session) => {
+      const open = expandedVisits.has(session.session_id);
+      const contact = session.sponsor_code ? analytics.outreach.find((row) => row.code === session.sponsor_code) : null;
+      const sponsorCell = session.sponsor_code
+        ? `<span class="tag">${esc(contact ? contact.organisation : session.sponsor_code)}</span>`
+        : `<span class="muted">${esc(arrivalOf(session))}</span>`;
+      return `<tr class="visit-row${open ? " is-open" : ""}" data-visit="${esc(session.session_id)}" tabindex="0" role="button" aria-expanded="${open}">
+        <td><span class="cell-primary">${esc(sinceNow(session.started_at))}</span><small>${esc(shortTime(session.started_at))}</small></td>
+        <td><span class="cell-primary">${esc(placeOf(session))}</span><small>${session.is_returning ? `Returning visitor · visit ${esc(session.visit_number)}` : "First visit"}${session.is_bot ? " · automated" : ""}</small></td>
+        <td title="${esc(networkOf(session))}">${esc(networkOf(session))}</td>
+        <td>${sponsorCell}</td>
+        <td class="cell-number">${esc(analyticsDuration(session.engaged_seconds))}</td>
+        <td class="cell-number">${session.max_scroll || 0}%</td>
+        <td class="cell-number">${(session.sections_viewed || []).length}</td>
+        <td><span class="cell-primary">${esc(session.device || "—")}</span><small>${esc(`${session.browser || ""} ${session.browser_version || ""} · ${session.os || ""}`.trim())}</small></td>
+      </tr>${open ? `<tr class="visit-detail-row"><td colspan="8">${visitDetail(session)}</td></tr>` : ""}`;
+    }).join("") : `<tr><td colspan="8"><div class="empty">No visits match this filter.</div></td></tr>`;
+  }
+
+  // Visits over time: one measure, so one colour and no legend. Every bar is
+  // focusable and its value is also in the data table beneath the chart.
+  function renderChart(sessions) {
+    const days = analyticsDays();
+    const weekly = days > 90;
+    const bucketMs = weekly ? 7 * 86400000 : 86400000;
+    const buckets = new Map();
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const count = weekly ? Math.ceil(days / 7) : days;
+    for (let index = count - 1; index >= 0; index -= 1) {
+      const stamp = start.getTime() - index * bucketMs;
+      buckets.set(stamp, { visits: 0, sponsored: 0 });
+    }
+    const keys = [...buckets.keys()];
+    sessions.forEach((session) => {
+      const time = new Date(session.started_at).getTime();
+      if (!Number.isFinite(time)) return;
+      // Anything older than the first bucket is folded into it, so the bars always
+      // add up to the visit count in the tiles above.
+      const slot = Math.min(keys.length - 1, Math.max(0, Math.floor((time - keys[0]) / bucketMs)));
+      const bucket = buckets.get(keys[slot]);
+      bucket.visits += 1;
+      if (session.sponsor_code) bucket.sponsored += 1;
+    });
+
+    const entries = [...buckets.entries()];
+    const max = Math.max(1, ...entries.map(([, bucket]) => bucket.visits));
+    const peak = entries.reduce((best, entry) => (entry[1].visits > best[1].visits ? entry : best), entries[0]);
+    const dayLabel = (stamp) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(new Date(stamp));
+
+    $("#chartCaption").textContent = weekly
+      ? `Each bar is one week. Peak ${peak[1].visits} visit${peak[1].visits === 1 ? "" : "s"} in the week of ${dayLabel(peak[0])}.`
+      : `Each bar is one day. Peak ${peak[1].visits} visit${peak[1].visits === 1 ? "" : "s"} on ${dayLabel(peak[0])}.`;
+
+    $("#visitsChart").innerHTML = `
+      <div class="chart-plot" style="--chart-max:${max}">
+        <span class="chart-gridline"><i>${max}</i></span>
+        <div class="chart-bars">
+          ${entries.map(([stamp, bucket]) => {
+            const label = `${dayLabel(stamp)}: ${bucket.visits} visit${bucket.visits === 1 ? "" : "s"}${bucket.sponsored ? `, ${bucket.sponsored} from a sponsor link` : ""}`;
+            return `<button class="chart-bar" type="button" aria-label="${esc(label)}"><span class="chart-fill" style="block-size:${Math.round(bucket.visits / max * 100)}%"></span><span class="chart-tip">${esc(label)}</span></button>`;
+          }).join("")}
+        </div>
+        <div class="chart-axis"><span>${esc(dayLabel(entries[0][0]))}</span><span>${esc(dayLabel(entries[entries.length - 1][0]))}</span></div>
+      </div>`;
+
+    $("#chartTable").innerHTML = entries.map(([stamp, bucket]) => `<tr><td>${esc(dayLabel(stamp))}</td><td>${bucket.visits}</td><td>${bucket.sponsored}</td></tr>`).join("");
+  }
+
+  function renderOverview() {
+    const sessions = visibleSessions();
+    const engaged = sessions.map((session) => Number(session.engaged_seconds) || 0).sort((a, b) => a - b);
+    const median = engaged.length ? engaged[Math.floor(engaged.length / 2)] : 0;
+    const sponsored = sessions.filter((session) => session.sponsor_code);
+    const tagged = new Set(sponsored.map((session) => session.sponsor_code));
+
+    $("#analyticsVisits").textContent = sessions.length.toLocaleString();
+    $("#analyticsVisitorsNote").textContent = `${new Set(sessions.map((session) => session.visitor_id)).size.toLocaleString()} distinct visitors`;
+    $("#analyticsTime").textContent = analyticsDuration(median);
+    $("#analyticsSponsorVisits").textContent = sponsored.length.toLocaleString();
+    $("#analyticsSponsorNote").textContent = `from ${tagged.size} tagged link${tagged.size === 1 ? "" : "s"}`;
+    $("#analyticsProposals").textContent = sessions.reduce((sum, session) => sum + (Number(session.proposal_opens) || 0), 0).toLocaleString();
+    $("#analyticsCopies").textContent = sessions.reduce((sum, session) => sum + (Number(session.email_copies) || 0), 0).toLocaleString();
+    $("#analyticsScrolls").textContent = sessions.filter((session) => (Number(session.max_scroll) || 0) >= 75).length.toLocaleString();
+
+    renderChart(sessions);
+    renderRankedList("#analyticsCountries", rankBy(sessions, (session) => (session.country ? `${flagFor(session.country_code)} ${session.country}`.trim() : "")));
+    renderRankedList("#analyticsCities", rankBy(sessions, (session) => (session.city ? `${session.city}${session.region && session.region !== session.city ? `, ${session.region}` : ""}` : "")));
+    renderRankedList("#analyticsOrgs", rankBy(sessions, (session) => session.org || session.isp));
+    renderRankedList("#analyticsSources", rankBy(sessions, arrivalOf));
+    renderRankedList("#analyticsDevices", rankBy(sessions, (session) => session.device));
+    renderRankedList("#analyticsBrowsers", rankBy(sessions, (session) => `${session.browser || "Unknown"} on ${session.os || "unknown system"}`));
+
+    const shown = new Set(sessions.map((session) => session.session_id));
+    const events = [...analytics.events.entries()]
+      .filter(([sessionId]) => !hidesBots() || shown.has(sessionId))
+      .flatMap(([, list]) => list);
+    renderRankedList("#analyticsSections", rankBy(events.filter((event) => event.event_type === "section_view"), (event) => event.label || event.section));
+    renderRankedList("#analyticsLinks", rankBy(events.filter((event) => event.event_type === "link_click"), (event) => event.label || event.target));
+  }
+
+  function renderAnalytics() {
+    if (!analytics.loaded) return;
+    renderSponsors();
+    renderVisits();
+    renderOverview();
   }
 
   async function loadAnalytics() {
     const status = $("#analyticsStatus");
     status.classList.remove("is-error");
+    $("#analyticsPanel").classList.toggle("is-empty", !remoteMode);
     if (!remoteMode) {
-      status.textContent = "Analytics require the Supabase connection. Local preview activity is intentionally not tracked.";
-      $("#analyticsStats").hidden = true;
-      $("#analyticsBreakdowns").hidden = true;
-      $("#analyticsRecentWrap").hidden = true;
+      status.textContent = "Analytics need the Supabase connection. Local preview activity is intentionally not tracked.";
       return;
     }
 
-    const days = Number($("#analyticsRange").value) || 30;
+    const days = analyticsDays();
     const since = new Date(Date.now() - days * 86400000).toISOString();
     status.textContent = "Loading analytics…";
     try {
-      const result = await client
-        .from("analytics_events")
-        .select("occurred_at,session_id,event_type,path,section,target,label,value,referrer,utm_source,utm_medium,utm_campaign,language,timezone,device,browser,platform,screen_size,viewport_size")
-        .gte("occurred_at", since)
-        .order("occurred_at", { ascending: false })
-        .limit(10000);
-      if (result.error) throw result.error;
-      renderAnalytics(result.data || []);
-      status.textContent = `Loaded ${(result.data || []).length.toLocaleString()} events from the last ${days} days${result.data?.length === 10000 ? " (display limit reached)" : ""}.`;
+      const [sessions, events, outreach] = await Promise.all([
+        client.from("analytics_sessions").select("*").gte("started_at", since).order("started_at", { ascending: false }).limit(5000),
+        client.from("analytics_events").select("occurred_at,session_id,event_type,path,section,target,label,value").gte("occurred_at", since).order("occurred_at", { ascending: false }).limit(20000),
+        client.from("outreach_contacts").select("*").order("created_at", { ascending: false })
+      ]);
+      const failure = [sessions, events, outreach].map((response) => response.error).find(Boolean);
+      if (failure) throw failure;
+
+      const grouped = new Map();
+      (events.data || []).forEach((event) => {
+        if (!grouped.has(event.session_id)) grouped.set(event.session_id, []);
+        grouped.get(event.session_id).push(event);
+      });
+      analytics = { sessions: sessions.data || [], events: grouped, outreach: outreach.data || [], loaded: true };
+      renderAnalytics();
+
+      const automated = analytics.sessions.filter((session) => session.is_bot).length;
+      // A full page means the database cut the result short, so the totals below
+      // would be understated without saying so.
+      const truncated = analytics.sessions.length >= 5000 || (events.data || []).length >= 20000;
+      status.textContent = `${analytics.sessions.length.toLocaleString()} visits in the last ${days} days${automated ? ` · ${automated} automated hit${automated === 1 ? "" : "s"}${hidesBots() ? " hidden" : ""}` : ""}.${truncated ? " Display limit reached — choose a shorter period for exact totals." : ""}`;
     } catch (error) {
-      status.textContent = error?.message?.includes("analytics_events")
-        ? "Analytics storage is not ready. Run the latest schema.sql in Supabase, then refresh."
+      const missing = /analytics_sessions|outreach_contacts|log_visit/.test(error?.message || "");
+      status.textContent = missing
+        ? "Visitor tracking tables are missing. Run the latest schema.sql in the Supabase SQL editor, then refresh."
         : `Could not load analytics: ${error?.message || "Unknown error"}`;
       status.classList.add("is-error");
-      $("#analyticsStats").hidden = true;
-      $("#analyticsBreakdowns").hidden = true;
-      $("#analyticsRecentWrap").hidden = true;
+      $("#analyticsPanel").classList.add("is-empty");
+    }
+  }
+
+  function fillOutreachLink(code) {
+    const preview = $("#outreachLinkPreview");
+    const valid = /^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$/.test(code || "");
+    preview.hidden = !valid;
+    if (valid) $("#outreachLinkValue").textContent = siteLinkFor(code);
+  }
+
+  async function copyText(value, message) {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast(message);
+    } catch {
+      toast("Copy the link manually — the browser blocked clipboard access.", true);
     }
   }
 
@@ -305,6 +564,12 @@
     if (id === "personForm") $("#personFormTitle").textContent = "Add person";
     if (id === "partnerForm") $("#partnerFormTitle").textContent = "Add partner";
     if (id === "updateForm") $("#updateFormTitle").textContent = "Add project update";
+    if (id === "outreachForm") {
+      $("#outreachFormTitle").textContent = "Add sponsor to track";
+      $("#outreachLinkPreview").hidden = true;
+      form.elements.emailed_at.value = new Date().toISOString().slice(0, 10);
+      form.elements.status.value = "emailed";
+    }
   }
 
   function previewMedia(target, url, name = "Selected image") {
@@ -539,9 +804,122 @@
     }
   });
 
+  $("#outreachForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = dataFromForm(form);
+    const code = slug(data.code || data.organisation);
+    if (!/^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$/.test(code)) {
+      toast("Use a tracking code of at least two letters or numbers.", true);
+      return;
+    }
+    if (!remoteMode) {
+      toast("Sponsor tracking needs the Supabase connection.", true);
+      return;
+    }
+    const row = {
+      code,
+      organisation: data.organisation.trim(),
+      contact_name: data.contact_name.trim(),
+      contact_email: data.contact_email.trim(),
+      notes: data.notes.trim(),
+      emailed_at: data.emailed_at || null,
+      status: data.status
+    };
+    if (data.id) row.id = data.id;
+    try {
+      const result = await client.from("outreach_contacts").upsert(row, { onConflict: "id" }).select().single();
+      if (result.error) throw result.error;
+      const index = analytics.outreach.findIndex((item) => item.id === result.data.id);
+      if (index >= 0) analytics.outreach[index] = result.data;
+      else analytics.outreach.unshift(result.data);
+      resetForm("outreachForm");
+      renderSponsors();
+      await copyText(siteLinkFor(code), `Saved. The link for ${row.organisation} is on your clipboard.`);
+    } catch (error) {
+      const duplicate = /duplicate|unique/i.test(error?.message || "");
+      toast(duplicate ? "That tracking code is already used by another sponsor." : error?.message || "Could not save the sponsor.", true);
+    }
+  });
+
+  $("#outreachForm").elements.organisation.addEventListener("input", (event) => {
+    const codeField = $("#outreachForm").elements.code;
+    if (codeField.dataset.touched === "true" || $("#outreachForm").elements.id.value) return;
+    codeField.value = slug(event.target.value);
+    fillOutreachLink(codeField.value);
+  });
+
+  $("#outreachForm").elements.code.addEventListener("input", (event) => {
+    event.target.dataset.touched = "true";
+    event.target.value = event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "");
+    fillOutreachLink(event.target.value);
+  });
+
+  $("#outreachLinkCopy").addEventListener("click", () => copyText($("#outreachLinkValue").textContent, "Link copied."));
+
+  $$(".view-tab").forEach((tab) => tab.addEventListener("click", () => {
+    $$(".view-tab").forEach((item) => { item.classList.remove("active"); item.setAttribute("aria-selected", "false"); });
+    $$(".analytics-view").forEach((view) => view.classList.remove("active"));
+    tab.classList.add("active");
+    tab.setAttribute("aria-selected", "true");
+    document.getElementById(tab.dataset.view).classList.add("active");
+  }));
+
+  $("#chartTableToggle").addEventListener("click", (event) => {
+    const wrap = $("#chartTableWrap");
+    wrap.hidden = !wrap.hidden;
+    event.currentTarget.setAttribute("aria-expanded", String(!wrap.hidden));
+    event.currentTarget.textContent = wrap.hidden ? "Show data table" : "Hide data table";
+  });
+
+  $("#visitsFilter").addEventListener("change", renderVisits);
+  $("#analyticsHideBots").addEventListener("change", renderAnalytics);
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const row = event.target.closest?.(".visit-row");
+    if (!row) return;
+    event.preventDefault();
+    row.click();
+  });
+
   document.addEventListener("click", async (event) => {
     const reset = event.target.closest("[data-reset]");
     if (reset) { resetForm(reset.dataset.reset); return; }
+    const copyLink = event.target.closest("[data-copy-link]");
+    if (copyLink) { await copyText(siteLinkFor(copyLink.dataset.copyLink), "Sponsor link copied."); return; }
+    const editOutreach = event.target.closest("[data-edit-outreach]");
+    if (editOutreach) {
+      const row = analytics.outreach.find((item) => item.id === editOutreach.dataset.editOutreach);
+      if (!row) return;
+      fillForm("#outreachForm", { ...row, emailed_at: row.emailed_at || "" });
+      $("#outreachFormTitle").textContent = `Edit ${row.organisation}`;
+      $("#outreachForm").elements.code.dataset.touched = "true";
+      fillOutreachLink(row.code);
+      return;
+    }
+    const deleteOutreach = event.target.closest("[data-delete-outreach]");
+    if (deleteOutreach) {
+      if (!confirm("Stop tracking this sponsor? Visits already recorded stay in the visit log.")) return;
+      try {
+        const result = await client.from("outreach_contacts").delete().eq("id", deleteOutreach.dataset.deleteOutreach);
+        if (result.error) throw result.error;
+        analytics.outreach = analytics.outreach.filter((item) => item.id !== deleteOutreach.dataset.deleteOutreach);
+        renderSponsors();
+        toast("Sponsor removed from tracking.");
+      } catch (error) {
+        toast(error?.message || "Could not remove the sponsor.", true);
+      }
+      return;
+    }
+    const visitRow = event.target.closest(".visit-row");
+    if (visitRow) {
+      const id = visitRow.dataset.visit;
+      if (expandedVisits.has(id)) expandedVisits.delete(id);
+      else expandedVisits.add(id);
+      renderVisits();
+      return;
+    }
     const editPerson = event.target.closest("[data-edit-person]");
     if (editPerson) { const row = state.people.find((person) => person.id === editPerson.dataset.editPerson); if (row) fillForm("#personForm", row); return; }
     const editUpdate = event.target.closest("[data-edit-update]");
@@ -577,6 +955,7 @@
   resetForm("updateForm");
   resetForm("personForm");
   resetForm("partnerForm");
+  resetForm("outreachForm");
 
   async function init() {
     state = loadLocal();

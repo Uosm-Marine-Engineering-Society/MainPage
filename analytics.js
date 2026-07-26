@@ -1,6 +1,11 @@
 (() => {
   const config = window.ARUS_SUPABASE || {};
   const sessionKey = "arus-analytics-session-v1";
+  const visitorKey = "arus-visitor-v1";
+  const sponsorKey = "arus-sponsor-v1";
+  const geoKey = "arus-geo-v1";
+  const geoMaxAge = 6 * 60 * 60 * 1000;
+  const sponsorMaxAge = 90 * 24 * 60 * 60 * 1000;
   const allowedEvents = new Set([
     "session_start",
     "page_view",
@@ -13,8 +18,7 @@
     "engagement"
   ]);
 
-  let client = null;
-  let sessionId = "";
+  let visit = null;
   let queue = [];
   let flushTimer = null;
   let heartbeatTimer = null;
@@ -22,111 +26,291 @@
   let stopped = false;
   let initialized = false;
 
-  const clean = (value, limit = 300) => String(value || "").replace(/\s+/g, " ").trim().slice(0, limit);
+  const clean = (value, limit = 300) => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, limit);
   const path = () => clean(`${location.pathname}${location.hash}`, 300) || "/";
   const sectionFor = (element) => element?.closest?.("section[id]")?.id || "";
+  const numeric = (value) => (Number.isFinite(Number(value)) ? Number(value) : null);
 
   function randomId() {
-    return globalThis.crypto?.randomUUID?.() || "00000000-0000-4000-8000-000000000000".replace(/[08]/g, (digit) => (Number(digit) ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> Number(digit) / 4).toString(16));
+    if (globalThis.crypto?.randomUUID) return crypto.randomUUID();
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+
+  const isUuid = (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value || "");
+
+  function readStore(store, key) {
+    try { return store.getItem(key); } catch { return null; }
+  }
+
+  function writeStore(store, key, value) {
+    try { store.setItem(key, value); } catch { /* private mode */ }
   }
 
   function currentSession() {
-    try {
-      const saved = sessionStorage.getItem(sessionKey);
-      if (saved && /^[0-9a-f-]{36}$/i.test(saved)) return saved;
-      const next = randomId();
-      sessionStorage.setItem(sessionKey, next);
-      return next;
-    } catch {
-      return randomId();
-    }
+    const saved = readStore(sessionStorage, sessionKey);
+    if (isUuid(saved)) return saved;
+    const next = randomId();
+    writeStore(sessionStorage, sessionKey, next);
+    return next;
   }
 
-  function browserName() {
+  // A first-party identifier so returning visits can be recognised. It never
+  // leaves this site and carries no personal detail.
+  function currentVisitor() {
+    let record = null;
+    try { record = JSON.parse(readStore(localStorage, visitorKey) || "null"); } catch { record = null; }
+    const known = record && isUuid(record.id);
+    const next = {
+      id: known ? record.id : randomId(),
+      visits: known ? Math.min(9999, (Number(record.visits) || 1) + 1) : 1,
+      firstSeen: known ? record.firstSeen : new Date().toISOString()
+    };
+    writeStore(localStorage, visitorKey, JSON.stringify(next));
+    return { id: next.id, visitNumber: next.visits, returning: known === true };
+  }
+
+  // Tagged outreach links (?s=code) attribute a visit to one emailed sponsor. The
+  // code is remembered so a later direct visit from the same person still counts.
+  function sponsorCode(query) {
+    const valid = (value) => (/^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$/.test(String(value || "").toLowerCase()) ? String(value).toLowerCase() : "");
+    const fromLink = valid(query.get("s")) || valid(query.get("sponsor")) || valid(query.get("ref"));
+    if (fromLink) {
+      writeStore(localStorage, sponsorKey, JSON.stringify({ code: fromLink, at: Date.now() }));
+      return fromLink;
+    }
+    try {
+      const saved = JSON.parse(readStore(localStorage, sponsorKey) || "null");
+      if (saved && Date.now() - Number(saved.at) < sponsorMaxAge) return valid(saved.code);
+    } catch { /* ignore */ }
+    return "";
+  }
+
+  function browserDetail() {
     const agent = navigator.userAgent;
-    if (/Edg\//.test(agent)) return "Edge";
-    if (/OPR\//.test(agent)) return "Opera";
-    if (/Firefox\//.test(agent)) return "Firefox";
-    if (/Chrome\//.test(agent)) return "Chrome";
-    if (/Safari\//.test(agent)) return "Safari";
-    return "Other";
+    const match = (pattern) => agent.match(pattern)?.[1] || "";
+    if (/Edg\//.test(agent)) return { name: "Edge", version: match(/Edg\/([\d.]+)/) };
+    if (/OPR\/|Opera/.test(agent)) return { name: "Opera", version: match(/OPR\/([\d.]+)/) };
+    if (/SamsungBrowser\//.test(agent)) return { name: "Samsung Internet", version: match(/SamsungBrowser\/([\d.]+)/) };
+    if (/Firefox\//.test(agent)) return { name: "Firefox", version: match(/Firefox\/([\d.]+)/) };
+    if (/CriOS\//.test(agent)) return { name: "Chrome", version: match(/CriOS\/([\d.]+)/) };
+    if (/Chrome\//.test(agent)) return { name: "Chrome", version: match(/Chrome\/([\d.]+)/) };
+    if (/Safari\//.test(agent)) return { name: "Safari", version: match(/Version\/([\d.]+)/) };
+    return { name: "Other", version: "" };
+  }
+
+  function osDetail() {
+    const agent = navigator.userAgent;
+    const match = (pattern) => (agent.match(pattern)?.[1] || "").replace(/_/g, ".");
+    if (/Windows NT/.test(agent)) {
+      const build = match(/Windows NT ([\d.]+)/);
+      return { name: "Windows", version: ({ "10.0": "10/11", "6.3": "8.1", "6.2": "8", "6.1": "7" })[build] || build };
+    }
+    if (/iPhone|iPad|iPod/.test(agent)) return { name: "iOS", version: match(/OS ([\d_]+)/) };
+    if (/Android/.test(agent)) return { name: "Android", version: match(/Android ([\d.]+)/) };
+    if (/Mac OS X/.test(agent)) return { name: "macOS", version: match(/Mac OS X ([\d_.]+)/) };
+    if (/CrOS/.test(agent)) return { name: "ChromeOS", version: "" };
+    if (/Linux/.test(agent)) return { name: "Linux", version: "" };
+    return { name: "Other", version: "" };
   }
 
   function deviceClass() {
+    if (/iPad|Tablet/.test(navigator.userAgent)) return "Tablet";
+    if (/Mobi|iPhone|Android.*Mobile/.test(navigator.userAgent)) return "Mobile";
     const width = Math.max(screen.width || 0, window.innerWidth || 0);
     if (width < 640) return "Mobile";
     if (width < 1024) return "Tablet";
     return "Desktop";
   }
 
+  // Mailbox security scanners follow every link in an email before the recipient
+  // ever sees it. Flagging them keeps those hits out of the real-visitor counts.
+  function looksAutomated() {
+    const agent = navigator.userAgent || "";
+    if (navigator.webdriver === true) return true;
+    if (!agent) return true;
+    return /bot|crawl|spider|slurp|headless|phantom|puppeteer|playwright|scrapy|curl|wget|preview|scanner|monitor|pingdom|lighthouse|gtmetrix|facebookexternalhit|whatsapp|telegram|skype|slackbot|discord|bingpreview|proofpoint|barracuda|mimecast|safelinks/i.test(agent);
+  }
+
   function safeReferrer() {
-    if (!document.referrer) return "";
+    if (!document.referrer) return { full: "", host: "" };
     try {
       const url = new URL(document.referrer);
-      return clean(`${url.origin}${url.pathname}`, 500);
+      if (url.host === location.host) return { full: "", host: "" };
+      return { full: clean(`${url.origin}${url.pathname}`, 500), host: clean(url.host.replace(/^www\./, ""), 160) };
     } catch {
-      return "";
+      return { full: "", host: "" };
     }
   }
 
-  function sourceContext() {
+  function buildVisit() {
     const query = new URLSearchParams(location.search);
+    const visitor = currentVisitor();
+    const referrer = safeReferrer();
+    const browser = browserDetail();
+    const os = osDetail();
+    const connection = navigator.connection || {};
+    const navigation = performance.getEntriesByType?.("navigation")?.[0];
+    const media = (rule) => (window.matchMedia ? window.matchMedia(rule).matches : null);
+
     return {
-      referrer: safeReferrer(),
+      session_id: currentSession(),
+      visitor_id: visitor.id,
+      visit_number: visitor.visitNumber,
+      is_returning: visitor.returning,
+      sponsor_code: sponsorCode(query),
+      entry_path: path(),
+      landing_query: clean(location.search.replace(/^\?/, ""), 500),
+      referrer: referrer.full,
+      referrer_host: referrer.host,
       utm_source: clean(query.get("utm_source"), 100),
       utm_medium: clean(query.get("utm_medium"), 100),
       utm_campaign: clean(query.get("utm_campaign"), 150),
-      language: clean(navigator.language, 40),
+      utm_content: clean(query.get("utm_content"), 150),
+      utm_term: clean(query.get("utm_term"), 150),
       timezone: clean(Intl.DateTimeFormat().resolvedOptions().timeZone, 80),
+      language: clean(navigator.language, 40),
+      languages: clean((navigator.languages || []).join(", "), 160),
       device: deviceClass(),
-      browser: browserName(),
+      browser: browser.name,
+      browser_version: clean(browser.version, 20),
+      os: os.name,
+      os_version: clean(os.version, 20),
       platform: clean(navigator.userAgentData?.platform || navigator.platform, 80),
       screen_size: `${screen.width || 0}×${screen.height || 0}`,
-      viewport_size: `${window.innerWidth || 0}×${window.innerHeight || 0}`
+      viewport_size: `${window.innerWidth || 0}×${window.innerHeight || 0}`,
+      pixel_ratio: numeric(window.devicePixelRatio),
+      color_depth: numeric(screen.colorDepth),
+      touch_points: numeric(navigator.maxTouchPoints),
+      cpu_cores: numeric(navigator.hardwareConcurrency),
+      device_memory: numeric(navigator.deviceMemory),
+      connection: clean([connection.effectiveType, connection.downlink ? `${connection.downlink}Mbps` : ""].filter(Boolean).join(" · "), 60),
+      prefers_dark: media("(prefers-color-scheme: dark)"),
+      prefers_reduced_motion: media("(prefers-reduced-motion: reduce)"),
+      user_agent: clean(navigator.userAgent, 400),
+      is_bot: looksAutomated(),
+      load_ms: navigation ? Math.max(0, Math.round(navigation.duration)) : null,
+      country: "",
+      country_code: "",
+      region: "",
+      city: "",
+      postal: "",
+      latitude: null,
+      longitude: null,
+      org: "",
+      isp: "",
+      asn: "",
+      geo_source: ""
     };
   }
 
-  function targetFor(link) {
+  async function fetchJson(url, timeout = 4500) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
     try {
-      const url = new URL(link.href, location.href);
-      const safePath = `${url.pathname}${url.hash}`;
-      return clean(url.origin === location.origin ? safePath : `${url.origin}${safePath}`, 500);
+      const response = await fetch(url, { signal: controller.signal, mode: "cors", credentials: "omit", cache: "no-store" });
+      if (!response.ok) return null;
+      return await response.json();
     } catch {
-      return clean(link.getAttribute("href"), 500);
+      return null;
+    } finally {
+      clearTimeout(timer);
     }
   }
 
+  // Approximate location, network operator and organisation come from a public IP
+  // lookup. The organisation name is what identifies a visit from a company network.
+  async function lookupGeo() {
+    try {
+      const cached = JSON.parse(readStore(localStorage, geoKey) || "null");
+      if (cached && Date.now() - Number(cached.at) < geoMaxAge && cached.geo?.country_code) return cached.geo;
+    } catch { /* ignore */ }
+
+    let geo = null;
+    const primary = await fetchJson("https://ipwho.is/");
+    if (primary && primary.success !== false && primary.country_code) {
+      geo = {
+        country: clean(primary.country, 80),
+        country_code: clean(primary.country_code, 2),
+        region: clean(primary.region, 100),
+        city: clean(primary.city, 100),
+        postal: clean(primary.postal, 20),
+        latitude: numeric(primary.latitude),
+        longitude: numeric(primary.longitude),
+        org: clean(primary.connection?.org || primary.connection?.domain, 160),
+        isp: clean(primary.connection?.isp, 160),
+        asn: primary.connection?.asn ? clean(`AS${primary.connection.asn}`, 40) : "",
+        geo_source: "ipwho.is"
+      };
+    } else {
+      const fallback = await fetchJson("https://get.geojs.io/v1/ip/geo.json");
+      if (fallback?.country_code) {
+        geo = {
+          country: clean(fallback.country, 80),
+          country_code: clean(fallback.country_code, 2),
+          region: clean(fallback.region, 100),
+          city: clean(fallback.city, 100),
+          postal: "",
+          latitude: numeric(fallback.latitude),
+          longitude: numeric(fallback.longitude),
+          org: clean(fallback.organization_name, 160),
+          isp: clean(fallback.organization_name, 160),
+          asn: fallback.asn ? clean(`AS${fallback.asn}`, 40) : "",
+          geo_source: "geojs.io"
+        };
+      }
+    }
+
+    if (geo) writeStore(localStorage, geoKey, JSON.stringify({ at: Date.now(), geo }));
+    return geo;
+  }
+
   function enqueue(eventType, detail = {}) {
-    if (stopped || !allowedEvents.has(eventType)) return;
+    if (stopped || !visit || !allowedEvents.has(eventType)) return;
     queue.push({
-      session_id: sessionId,
+      session_id: visit.session_id,
       event_type: eventType,
       path: path(),
       section: clean(detail.section, 100),
       target: clean(detail.target, 500),
       label: clean(detail.label, 160),
-      value: Number.isFinite(Number(detail.value)) ? Math.round(Number(detail.value)) : null,
-      ...detail.context
+      value: Number.isFinite(Number(detail.value)) ? Math.round(Number(detail.value)) : null
     });
     if (queue.length >= 12) flush();
     else if (!flushTimer) flushTimer = setTimeout(flush, 1800);
   }
 
-  async function flush() {
+  async function send(events, keepalive = false) {
+    const response = await fetch(`${config.url}/rest/v1/rpc/log_visit`, {
+      method: "POST",
+      keepalive,
+      mode: "cors",
+      credentials: "omit",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: config.publishableKey,
+        Authorization: `Bearer ${config.publishableKey}`,
+        Prefer: "return=minimal"
+      },
+      body: JSON.stringify({ p_session: visit, p_events: events })
+    });
+    if (!response.ok) throw new Error(`Analytics request failed (${response.status}).`);
+  }
+
+  async function flush(keepalive = false) {
     clearTimeout(flushTimer);
     flushTimer = null;
-    if (stopped || !queue.length) return;
+    if (stopped || !visit) return;
     const batch = queue.splice(0, 20);
     try {
-      const result = await client.rpc("log_analytics_events", { p_events: batch });
-      if (!result.error) return;
-      stopped = true;
-      queue = [];
-      console.warn("Anonymous site analytics are unavailable.", result.error.message);
+      await send(batch, keepalive);
     } catch (error) {
       stopped = true;
       queue = [];
-      console.warn("Anonymous site analytics are unavailable.", error?.message || error);
+      console.warn("Site analytics are unavailable.", error?.message || error);
     }
   }
 
@@ -158,6 +342,16 @@
     };
     window.addEventListener("scroll", check, { passive: true });
     check();
+  }
+
+  function targetFor(link) {
+    try {
+      const url = new URL(link.href, location.href);
+      const safePath = `${url.pathname}${url.hash}`;
+      return clean(url.origin === location.origin ? safePath : `${url.origin}${safePath}`, 500);
+    } catch {
+      return clean(link.getAttribute("href"), 500);
+    }
   }
 
   function trackClicks() {
@@ -200,11 +394,11 @@
     heartbeatTimer = setInterval(heartbeat, 15000);
     document.addEventListener("visibilitychange", () => {
       heartbeat();
-      if (document.visibilityState === "hidden") flush();
+      if (document.visibilityState === "hidden") flush(true);
     });
     window.addEventListener("pagehide", () => {
       heartbeat();
-      flush();
+      flush(true);
       clearInterval(heartbeatTimer);
     });
   }
@@ -212,20 +406,26 @@
   function init(site = {}) {
     if (initialized || site.analyticsEnabled === false) return;
     initialized = true;
-    const privacySignals = [navigator.doNotTrack, window.doNotTrack, navigator.msDoNotTrack];
-    const respectsPrivacySignal = navigator.globalPrivacyControl === true || privacySignals.some((value) => value === "1" || value === "yes");
-    const canStore = config.url && config.publishableKey && window.supabase;
+    // Global Privacy Control is a legally recognised opt-out and is honoured.
+    if (navigator.globalPrivacyControl === true) return;
+    if (!config.url || !config.publishableKey) return;
     const isPreview = location.protocol !== "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
-    if (respectsPrivacySignal || !canStore || isPreview) return;
+    if (isPreview) return;
 
-    client = window.supabase.createClient(config.url, config.publishableKey);
-    sessionId = currentSession();
-    enqueue("session_start", { context: sourceContext() });
+    visit = buildVisit();
+    enqueue("session_start", { label: document.title });
     enqueue("page_view", { label: document.title });
     trackSections();
     trackScrollDepth();
     trackClicks();
     trackEngagement();
+    flush();
+
+    lookupGeo().then((geo) => {
+      if (!geo || stopped || !visit) return;
+      Object.assign(visit, geo);
+      flush();
+    });
   }
 
   window.ARUS_ANALYTICS = {

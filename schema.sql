@@ -225,6 +225,354 @@ $$;
 revoke all on function public.log_analytics_events(jsonb) from public;
 grant execute on function public.log_analytics_events(jsonb) to anon, authenticated;
 
+-- Visitor sessions. One row per browser tab session, holding every observable
+-- detail about the visit. Events stay in analytics_events and reference this row.
+create table if not exists public.analytics_sessions (
+  session_id uuid primary key,
+  visitor_id uuid not null,
+  started_at timestamptz not null default now(),
+  last_seen_at timestamptz not null default now(),
+  sponsor_code text not null default '',
+  entry_path text not null default '/',
+  landing_query text not null default '',
+  referrer text not null default '',
+  referrer_host text not null default '',
+  utm_source text not null default '',
+  utm_medium text not null default '',
+  utm_campaign text not null default '',
+  utm_content text not null default '',
+  utm_term text not null default '',
+  ip_address text not null default '',
+  ip_hash text not null default '',
+  edge_country text not null default '',
+  country text not null default '',
+  country_code text not null default '',
+  region text not null default '',
+  city text not null default '',
+  postal text not null default '',
+  latitude double precision,
+  longitude double precision,
+  org text not null default '',
+  isp text not null default '',
+  asn text not null default '',
+  geo_source text not null default '',
+  timezone text not null default '',
+  language text not null default '',
+  languages text not null default '',
+  device text not null default '',
+  browser text not null default '',
+  browser_version text not null default '',
+  os text not null default '',
+  os_version text not null default '',
+  platform text not null default '',
+  screen_size text not null default '',
+  viewport_size text not null default '',
+  pixel_ratio numeric,
+  color_depth integer,
+  touch_points integer,
+  cpu_cores integer,
+  device_memory numeric,
+  connection text not null default '',
+  prefers_dark boolean,
+  prefers_reduced_motion boolean,
+  user_agent text not null default '',
+  is_bot boolean not null default false,
+  is_returning boolean not null default false,
+  visit_number integer not null default 1,
+  load_ms integer,
+  page_views integer not null default 0,
+  events_count integer not null default 0,
+  engaged_seconds integer not null default 0,
+  max_scroll integer not null default 0,
+  link_clicks integer not null default 0,
+  proposal_opens integer not null default 0,
+  email_copies integer not null default 0,
+  sections_viewed text[] not null default '{}'
+);
+
+create index if not exists analytics_sessions_started_at_idx on public.analytics_sessions (started_at desc);
+create index if not exists analytics_sessions_sponsor_idx on public.analytics_sessions (sponsor_code, started_at desc) where sponsor_code <> '';
+create index if not exists analytics_sessions_visitor_idx on public.analytics_sessions (visitor_id, started_at desc);
+create index if not exists analytics_sessions_ip_hash_idx on public.analytics_sessions (ip_hash, started_at desc);
+
+-- Sponsors and contacts that were emailed a tagged link. `code` is the value that
+-- travels in the ?s= parameter and ties a visit back to one outreach email.
+create table if not exists public.outreach_contacts (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique check (code ~ '^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$'),
+  organisation text not null,
+  contact_name text not null default '',
+  contact_email text not null default '',
+  tier text not null default '',
+  notes text not null default '',
+  emailed_at date,
+  status text not null default 'draft' check (status in ('draft', 'emailed', 'replied', 'meeting', 'sponsor', 'declined')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+drop trigger if exists set_outreach_contacts_updated_at on public.outreach_contacts;
+create trigger set_outreach_contacts_updated_at before update on public.outreach_contacts for each row execute procedure public.set_updated_at();
+
+-- Records a visit and its events in one call. The session payload is merged, so a
+-- later call that carries geolocation fills the blanks left by the first call.
+create or replace function public.log_visit(p_session jsonb, p_events jsonb default '[]'::jsonb)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  headers jsonb;
+  client_ip text;
+  client_ip_hash text;
+  edge_country text;
+  event_row jsonb;
+  event_session uuid;
+  event_name text;
+  event_value integer;
+  session_uuid uuid;
+  visitor_uuid uuid;
+  inserted_count integer := 0;
+begin
+  if p_session is null or jsonb_typeof(p_session) <> 'object' then
+    raise exception 'Visit payload must be a JSON object.';
+  end if;
+  if p_events is null or jsonb_typeof(p_events) <> 'array' then
+    raise exception 'Event payload must be a JSON array.';
+  end if;
+  if jsonb_array_length(p_events) > 25 then
+    raise exception 'Event payload must contain at most 25 events.';
+  end if;
+
+  begin
+    session_uuid := (p_session ->> 'session_id')::uuid;
+    visitor_uuid := (p_session ->> 'visitor_id')::uuid;
+  exception when others then
+    return 0;
+  end;
+  if session_uuid is null or visitor_uuid is null then
+    return 0;
+  end if;
+
+  -- PostgREST exposes the request headers the Supabase edge forwarded. The raw IP
+  -- never reaches the browser: it is read here and stored for administrators only.
+  headers := coalesce(nullif(current_setting('request.headers', true), ''), '{}')::jsonb;
+  client_ip := coalesce(
+    nullif(headers ->> 'cf-connecting-ip', ''),
+    nullif(split_part(coalesce(headers ->> 'x-forwarded-for', ''), ',', 1), ''),
+    nullif(headers ->> 'x-real-ip', ''),
+    ''
+  );
+  client_ip := left(btrim(client_ip), 45);
+  client_ip_hash := case when client_ip = '' then '' else encode(sha256(convert_to(client_ip || '|arus-visit', 'UTF8')), 'hex') end;
+  edge_country := upper(left(coalesce(headers ->> 'cf-ipcountry', ''), 2));
+  if edge_country in ('XX', 'T1') then
+    edge_country := '';
+  end if;
+
+  -- Guards against a broken page or a scripted client filling the table.
+  if client_ip_hash <> '' and (
+    select count(*) >= 60
+    from public.analytics_sessions
+    where ip_hash = client_ip_hash
+      and started_at > now() - interval '1 hour'
+      and session_id <> session_uuid
+  ) then
+    return 0;
+  end if;
+
+  insert into public.analytics_sessions as target (
+    session_id, visitor_id, sponsor_code, entry_path, landing_query, referrer, referrer_host,
+    utm_source, utm_medium, utm_campaign, utm_content, utm_term,
+    ip_address, ip_hash, edge_country,
+    country, country_code, region, city, postal, latitude, longitude,
+    org, isp, asn, geo_source, timezone, language, languages,
+    device, browser, browser_version, os, os_version, platform,
+    screen_size, viewport_size, pixel_ratio, color_depth, touch_points,
+    cpu_cores, device_memory, connection, prefers_dark, prefers_reduced_motion,
+    user_agent, is_bot, is_returning, visit_number, load_ms
+  )
+  values (
+    session_uuid,
+    visitor_uuid,
+    left(coalesce(p_session ->> 'sponsor_code', ''), 40),
+    left(coalesce(nullif(p_session ->> 'entry_path', ''), '/'), 300),
+    left(coalesce(p_session ->> 'landing_query', ''), 500),
+    left(coalesce(p_session ->> 'referrer', ''), 500),
+    left(coalesce(p_session ->> 'referrer_host', ''), 160),
+    left(coalesce(p_session ->> 'utm_source', ''), 100),
+    left(coalesce(p_session ->> 'utm_medium', ''), 100),
+    left(coalesce(p_session ->> 'utm_campaign', ''), 150),
+    left(coalesce(p_session ->> 'utm_content', ''), 150),
+    left(coalesce(p_session ->> 'utm_term', ''), 150),
+    client_ip,
+    client_ip_hash,
+    edge_country,
+    left(coalesce(p_session ->> 'country', ''), 80),
+    upper(left(coalesce(p_session ->> 'country_code', ''), 2)),
+    left(coalesce(p_session ->> 'region', ''), 100),
+    left(coalesce(p_session ->> 'city', ''), 100),
+    left(coalesce(p_session ->> 'postal', ''), 20),
+    nullif(p_session ->> 'latitude', '')::double precision,
+    nullif(p_session ->> 'longitude', '')::double precision,
+    left(coalesce(p_session ->> 'org', ''), 160),
+    left(coalesce(p_session ->> 'isp', ''), 160),
+    left(coalesce(p_session ->> 'asn', ''), 40),
+    left(coalesce(p_session ->> 'geo_source', ''), 40),
+    left(coalesce(p_session ->> 'timezone', ''), 80),
+    left(coalesce(p_session ->> 'language', ''), 40),
+    left(coalesce(p_session ->> 'languages', ''), 160),
+    left(coalesce(p_session ->> 'device', ''), 40),
+    left(coalesce(p_session ->> 'browser', ''), 40),
+    left(coalesce(p_session ->> 'browser_version', ''), 20),
+    left(coalesce(p_session ->> 'os', ''), 40),
+    left(coalesce(p_session ->> 'os_version', ''), 20),
+    left(coalesce(p_session ->> 'platform', ''), 80),
+    left(coalesce(p_session ->> 'screen_size', ''), 30),
+    left(coalesce(p_session ->> 'viewport_size', ''), 30),
+    nullif(p_session ->> 'pixel_ratio', '')::numeric,
+    nullif(p_session ->> 'color_depth', '')::integer,
+    nullif(p_session ->> 'touch_points', '')::integer,
+    nullif(p_session ->> 'cpu_cores', '')::integer,
+    nullif(p_session ->> 'device_memory', '')::numeric,
+    left(coalesce(p_session ->> 'connection', ''), 60),
+    nullif(p_session ->> 'prefers_dark', '')::boolean,
+    nullif(p_session ->> 'prefers_reduced_motion', '')::boolean,
+    left(coalesce(p_session ->> 'user_agent', ''), 400),
+    coalesce(nullif(p_session ->> 'is_bot', '')::boolean, false),
+    coalesce(nullif(p_session ->> 'is_returning', '')::boolean, false),
+    greatest(1, least(9999, coalesce(nullif(p_session ->> 'visit_number', '')::integer, 1))),
+    nullif(p_session ->> 'load_ms', '')::integer
+  )
+  on conflict (session_id) do update set
+    last_seen_at = now(),
+    sponsor_code = coalesce(nullif(target.sponsor_code, ''), excluded.sponsor_code),
+    country = coalesce(nullif(excluded.country, ''), target.country),
+    country_code = coalesce(nullif(excluded.country_code, ''), target.country_code),
+    region = coalesce(nullif(excluded.region, ''), target.region),
+    city = coalesce(nullif(excluded.city, ''), target.city),
+    postal = coalesce(nullif(excluded.postal, ''), target.postal),
+    latitude = coalesce(excluded.latitude, target.latitude),
+    longitude = coalesce(excluded.longitude, target.longitude),
+    org = coalesce(nullif(excluded.org, ''), target.org),
+    isp = coalesce(nullif(excluded.isp, ''), target.isp),
+    asn = coalesce(nullif(excluded.asn, ''), target.asn),
+    geo_source = coalesce(nullif(excluded.geo_source, ''), target.geo_source),
+    ip_address = coalesce(nullif(excluded.ip_address, ''), target.ip_address),
+    ip_hash = coalesce(nullif(excluded.ip_hash, ''), target.ip_hash),
+    edge_country = coalesce(nullif(excluded.edge_country, ''), target.edge_country),
+    load_ms = coalesce(target.load_ms, excluded.load_ms),
+    is_bot = target.is_bot or excluded.is_bot;
+
+  for event_row in select value from jsonb_array_elements(p_events)
+  loop
+    begin
+      event_session := coalesce((event_row ->> 'session_id')::uuid, session_uuid);
+    exception when others then
+      event_session := session_uuid;
+    end;
+    if event_session <> session_uuid then
+      continue;
+    end if;
+
+    event_name := event_row ->> 'event_type';
+    if event_name is null or event_name not in (
+      'session_start', 'page_view', 'section_view', 'link_click', 'control_click',
+      'proposal_open', 'email_copy', 'scroll_depth', 'engagement'
+    ) then
+      continue;
+    end if;
+
+    if (
+      select count(*) >= 200
+      from public.analytics_events
+      where session_id = session_uuid
+        and occurred_at > now() - interval '1 minute'
+    ) then
+      continue;
+    end if;
+
+    event_value := null;
+    if length(coalesce(event_row ->> 'value', '')) <= 9 and coalesce(event_row ->> 'value', '') ~ '^-?[0-9]+$' then
+      event_value := greatest(-100000, least(100000, (event_row ->> 'value')::integer));
+    end if;
+
+    insert into public.analytics_events (
+      session_id, event_type, path, section, target, label, value,
+      referrer, utm_source, utm_medium, utm_campaign,
+      language, timezone, device, browser, platform, screen_size, viewport_size
+    )
+    values (
+      session_uuid,
+      event_name,
+      left(coalesce(nullif(event_row ->> 'path', ''), '/'), 300),
+      left(coalesce(event_row ->> 'section', ''), 100),
+      left(coalesce(event_row ->> 'target', ''), 500),
+      left(coalesce(event_row ->> 'label', ''), 160),
+      event_value,
+      left(coalesce(p_session ->> 'referrer', ''), 500),
+      left(coalesce(p_session ->> 'utm_source', ''), 100),
+      left(coalesce(p_session ->> 'utm_medium', ''), 100),
+      left(coalesce(p_session ->> 'utm_campaign', ''), 150),
+      left(coalesce(p_session ->> 'language', ''), 40),
+      left(coalesce(p_session ->> 'timezone', ''), 80),
+      left(coalesce(p_session ->> 'device', ''), 40),
+      left(coalesce(p_session ->> 'browser', ''), 40),
+      left(coalesce(p_session ->> 'platform', ''), 80),
+      left(coalesce(p_session ->> 'screen_size', ''), 30),
+      left(coalesce(p_session ->> 'viewport_size', ''), 30)
+    );
+    inserted_count := inserted_count + 1;
+  end loop;
+
+  -- Recompute the visit rollups the dashboard reads, so one session is one row.
+  update public.analytics_sessions as s
+  set page_views = rollup.page_views,
+      events_count = rollup.events_count,
+      engaged_seconds = rollup.engaged_seconds,
+      max_scroll = rollup.max_scroll,
+      link_clicks = rollup.link_clicks,
+      proposal_opens = rollup.proposal_opens,
+      email_copies = rollup.email_copies,
+      sections_viewed = rollup.sections_viewed
+  from (
+    select
+      (count(*))::integer as events_count,
+      (count(*) filter (where event_type = 'page_view'))::integer as page_views,
+      (coalesce(sum(value) filter (where event_type = 'engagement'), 0))::integer as engaged_seconds,
+      (coalesce(max(value) filter (where event_type = 'scroll_depth'), 0))::integer as max_scroll,
+      (count(*) filter (where event_type = 'link_click'))::integer as link_clicks,
+      (count(*) filter (where event_type = 'proposal_open'))::integer as proposal_opens,
+      (count(*) filter (where event_type = 'email_copy'))::integer as email_copies,
+      coalesce(array_agg(distinct section) filter (where event_type = 'section_view' and section <> ''), '{}'::text[]) as sections_viewed
+    from public.analytics_events
+    where session_id = session_uuid
+  ) as rollup
+  where s.session_id = session_uuid;
+
+  return inserted_count;
+end;
+$$;
+
+revoke all on function public.log_visit(jsonb, jsonb) from public;
+grant execute on function public.log_visit(jsonb, jsonb) to anon, authenticated;
+
+alter table public.analytics_sessions enable row level security;
+alter table public.outreach_contacts enable row level security;
+revoke all on table public.analytics_sessions from anon, authenticated;
+revoke all on table public.outreach_contacts from anon, authenticated;
+grant select, delete on table public.analytics_sessions to authenticated;
+grant select, insert, update, delete on table public.outreach_contacts to authenticated;
+
+drop policy if exists "Admins read visits" on public.analytics_sessions;
+drop policy if exists "Admins delete visits" on public.analytics_sessions;
+create policy "Admins read visits" on public.analytics_sessions for select to authenticated using (public.is_admin());
+create policy "Admins delete visits" on public.analytics_sessions for delete to authenticated using (public.is_admin());
+
+drop policy if exists "Admins manage outreach" on public.outreach_contacts;
+create policy "Admins manage outreach" on public.outreach_contacts for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
 drop trigger if exists set_site_settings_updated_at on public.site_settings;
 create trigger set_site_settings_updated_at before update on public.site_settings for each row execute procedure public.set_updated_at();
 drop trigger if exists set_people_updated_at on public.people;

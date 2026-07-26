@@ -136,72 +136,144 @@
       </section>
 
       <section class="panel" id="analyticsPanel" role="tabpanel">
-        <article class="card">
-          <div class="card-heading analytics-heading">
-            <div>
-              <h2>Site analytics</h2>
-              <p>Anonymous visit, engagement, navigation and conversion activity. No IP addresses, cookies or persistent visitor fingerprints are stored.</p>
-            </div>
-            <div class="analytics-toolbar">
-              <label for="analyticsRange">Period</label>
-              <select id="analyticsRange">
-                <option value="7">Last 7 days</option>
-                <option value="30" selected>Last 30 days</option>
-                <option value="90">Last 90 days</option>
-              </select>
-              <button class="button button-secondary" id="analyticsRefresh" type="button">Refresh</button>
-            </div>
+        <div class="analytics-filters">
+          <div class="analytics-views" role="tablist" aria-label="Analytics views">
+            <button class="view-tab active" type="button" role="tab" aria-selected="true" data-view="sponsorsView">Sponsor watch</button>
+            <button class="view-tab" type="button" role="tab" aria-selected="false" data-view="visitsView">Visits</button>
+            <button class="view-tab" type="button" role="tab" aria-selected="false" data-view="overviewView">Overview</button>
           </div>
-          <div class="card-body">
-            <p class="analytics-status" id="analyticsStatus" role="status">Open this section while connected to Supabase to load analytics.</p>
+          <div class="analytics-toolbar">
+            <label for="analyticsRange">Period</label>
+            <select id="analyticsRange">
+              <option value="7">Last 7 days</option>
+              <option value="30" selected>Last 30 days</option>
+              <option value="90">Last 90 days</option>
+              <option value="365">Last 12 months</option>
+            </select>
+            <label class="check inline"><input type="checkbox" id="analyticsHideBots" checked>Hide automated hits</label>
+            <button class="button button-secondary" id="analyticsRefresh" type="button">Refresh</button>
+          </div>
+        </div>
+        <p class="analytics-status" id="analyticsStatus" role="status">Open this section while connected to Supabase to load analytics.</p>
 
-            <div class="analytics-stats" id="analyticsStats" hidden>
-              <article><span>Visits</span><strong id="analyticsVisits">0</strong></article>
-              <article><span>Engaged time</span><strong id="analyticsTime">0s</strong><small>Average per visit</small></article>
-              <article><span>Link clicks</span><strong id="analyticsClicks">0</strong></article>
-              <article><span>Proposal opens</span><strong id="analyticsProposals">0</strong></article>
-              <article><span>Email copies</span><strong id="analyticsCopies">0</strong></article>
-              <article><span>Deep scrolls</span><strong id="analyticsScrolls">0</strong><small>Reached 75%+</small></article>
+        <div class="analytics-view active" id="sponsorsView">
+          <article class="card">
+            <div class="card-heading">
+              <div>
+                <h2 id="outreachFormTitle">Add sponsor to track</h2>
+                <p>Each sponsor gets a unique link. Paste that link into their outreach email instead of the plain website address, and every visit from it is attributed to them.</p>
+              </div>
             </div>
-
-            <div class="analytics-grid" id="analyticsBreakdowns" hidden>
-              <section>
-                <h3>Visit sources</h3>
-                <div class="analytics-list" id="analyticsSources"></div>
-              </section>
-              <section>
-                <h3>Devices and browsers</h3>
-                <div class="analytics-list" id="analyticsDevices"></div>
-              </section>
-              <section>
-                <h3>Viewed sections</h3>
-                <div class="analytics-list" id="analyticsSections"></div>
-              </section>
-              <section>
-                <h3>Clicked links</h3>
-                <div class="analytics-list" id="analyticsLinks"></div>
-              </section>
-              <section>
-                <h3>Campaigns</h3>
-                <div class="analytics-list" id="analyticsCampaigns"></div>
-              </section>
-              <section>
-                <h3>Timezone and language</h3>
-                <div class="analytics-list" id="analyticsContexts"></div>
-              </section>
+            <div class="card-body">
+              <form id="outreachForm" class="form-grid">
+                <input type="hidden" name="id">
+                <div class="field"><label>Organisation<input required name="organisation" placeholder="Petronas"></label></div>
+                <div class="field"><label>Tracking code<input required name="code" pattern="[a-z0-9][a-z0-9-]{0,38}[a-z0-9]" placeholder="petronas"><small class="field-note">Lower-case letters, numbers and hyphens. Appears in the link.</small></label></div>
+                <div class="field"><label>Contact name<input name="contact_name" placeholder="Head of Sponsorship"></label></div>
+                <div class="field"><label>Contact email<input name="contact_email" type="email" placeholder="name@company.com"></label></div>
+                <div class="field"><label>Date emailed<input name="emailed_at" type="date"></label></div>
+                <div class="field"><label>Stage<select name="status">
+                  <option value="draft">Not sent yet</option>
+                  <option value="emailed" selected>Emailed</option>
+                  <option value="replied">Replied</option>
+                  <option value="meeting">Meeting booked</option>
+                  <option value="sponsor">Confirmed sponsor</option>
+                  <option value="declined">Declined</option>
+                </select></label></div>
+                <div class="field full"><label>Notes<textarea name="notes" rows="2" placeholder="Package discussed, follow-up date, who introduced them."></textarea></label></div>
+                <div class="link-preview full" id="outreachLinkPreview" hidden>
+                  <span>Link for this sponsor</span>
+                  <code id="outreachLinkValue">—</code>
+                  <button class="button button-secondary" type="button" id="outreachLinkCopy">Copy link</button>
+                </div>
+                <div class="form-actions full"><button class="button button-primary" type="submit">Save sponsor</button><button class="button button-secondary" type="button" data-reset="outreachForm">Clear</button></div>
+              </form>
             </div>
+          </article>
 
-            <section class="analytics-recent" id="analyticsRecentWrap" hidden>
-              <h3>Recent activity</h3>
+          <article class="card">
+            <div class="card-heading">
+              <div>
+                <h2>Who has opened the site</h2>
+                <p>A sponsor with no visits several days after the email is the signal that it never reached their inbox. Mailbox security scanners are shown separately, because they follow links automatically before anyone reads the message.</p>
+              </div>
+            </div>
+            <div class="card-body">
               <div class="analytics-table-wrap">
-                <table class="analytics-table">
-                  <thead><tr><th>Time</th><th>Activity</th><th>Section</th><th>Detail</th><th>Value</th></tr></thead>
-                  <tbody id="analyticsRecent"></tbody>
+                <table class="analytics-table sponsor-table">
+                  <thead><tr><th>Sponsor</th><th>Result</th><th>Emailed</th><th>Visits</th><th>First open</th><th>Last seen</th><th>Read time</th><th>Proposal</th><th>Link</th><th></th></tr></thead>
+                  <tbody id="sponsorRows"></tbody>
                 </table>
               </div>
-            </section>
+            </div>
+          </article>
+        </div>
+
+        <div class="analytics-view" id="visitsView">
+          <article class="card">
+            <div class="card-heading">
+              <div>
+                <h2>Individual visits</h2>
+                <p>One row per visit. Select a row to see everything recorded about it, including the pages read and the order they were read in.</p>
+              </div>
+              <div class="analytics-toolbar">
+                <label for="visitsFilter">Show</label>
+                <select id="visitsFilter">
+                  <option value="all">All visits</option>
+                  <option value="sponsor">Tagged sponsor links only</option>
+                  <option value="engaged">Engaged visits only</option>
+                  <option value="proposal">Opened the proposal</option>
+                </select>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="analytics-table-wrap">
+                <table class="analytics-table visits-table">
+                  <thead><tr><th>When</th><th>Who / where</th><th>Network</th><th>Sponsor link</th><th>Read time</th><th>Scroll</th><th>Sections</th><th>Device</th></tr></thead>
+                  <tbody id="visitRows"></tbody>
+                </table>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="analytics-view" id="overviewView">
+          <div class="analytics-stats" id="analyticsStats">
+            <article><span>Visits</span><strong id="analyticsVisits">0</strong><small id="analyticsVisitorsNote">0 distinct visitors</small></article>
+            <article><span>Read time</span><strong id="analyticsTime">0s</strong><small>Median per visit</small></article>
+            <article><span>Sponsor-link visits</span><strong id="analyticsSponsorVisits">0</strong><small id="analyticsSponsorNote">from 0 tagged links</small></article>
+            <article><span>Proposal opens</span><strong id="analyticsProposals">0</strong></article>
+            <article><span>Email copies</span><strong id="analyticsCopies">0</strong></article>
+            <article><span>Read to the end</span><strong id="analyticsScrolls">0</strong><small>Reached 75% or deeper</small></article>
           </div>
-        </article>
+
+          <article class="card chart-card">
+            <div class="card-heading">
+              <div><h2>Visits per day</h2><p id="chartCaption">Each bar is one day.</p></div>
+              <button class="button button-secondary" type="button" id="chartTableToggle" aria-expanded="false">Show data table</button>
+            </div>
+            <div class="card-body">
+              <figure class="chart" id="visitsChart" aria-describedby="chartCaption"></figure>
+              <div class="chart-table-wrap" id="chartTableWrap" hidden>
+                <table class="analytics-table">
+                  <thead><tr><th>Day</th><th>Visits</th><th>Sponsor-link visits</th></tr></thead>
+                  <tbody id="chartTable"></tbody>
+                </table>
+              </div>
+            </div>
+          </article>
+
+          <div class="analytics-grid">
+            <section><h3>Countries</h3><div class="analytics-list" id="analyticsCountries"></div></section>
+            <section><h3>Cities</h3><div class="analytics-list" id="analyticsCities"></div></section>
+            <section><h3>Networks and organisations</h3><div class="analytics-list" id="analyticsOrgs"></div></section>
+            <section><h3>How they arrived</h3><div class="analytics-list" id="analyticsSources"></div></section>
+            <section><h3>Sections read</h3><div class="analytics-list" id="analyticsSections"></div></section>
+            <section><h3>Links clicked</h3><div class="analytics-list" id="analyticsLinks"></div></section>
+            <section><h3>Devices</h3><div class="analytics-list" id="analyticsDevices"></div></section>
+            <section><h3>Browsers and systems</h3><div class="analytics-list" id="analyticsBrowsers"></div></section>
+          </div>
+        </div>
       </section>
 
       <section class="panel" id="settingsPanel" role="tabpanel">
@@ -219,8 +291,8 @@
               <div class="field"><label>Instagram URL<input name="instagram" type="url" placeholder="https://"></label></div>
               <div class="field"><label>LinkedIn URL<input name="linkedin" type="url" placeholder="https://"></label></div>
               <label class="check full"><input name="animations" type="checkbox" checked>Enable page animations</label>
-              <label class="check full"><input name="analyticsEnabled" type="checkbox" checked>Enable anonymous site analytics</label>
-              <p class="settings-note full">Analytics use a per-tab session ID and record referrer/UTM source, coarse device information, viewed sections, scroll depth, clicks, proposal opens, email copies and active time. Global Privacy Control and Do Not Track signals are respected.</p>
+              <label class="check full"><input name="analyticsEnabled" type="checkbox" checked>Enable visitor analytics</label>
+              <p class="settings-note full">Analytics record the visitor’s IP address, approximate location and network operator, device, browser and system, where they arrived from, which sponsor link they used, the sections they read, scroll depth, clicks, proposal opens, email copies and reading time. Visitors carrying a Global Privacy Control signal are not recorded. Because this stores personal data, the website needs a privacy notice describing it.</p>
               <div class="form-actions full"><button class="button button-primary" type="submit">Save site settings</button></div>
             </form>
           </div>
