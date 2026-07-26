@@ -82,7 +82,7 @@
     const value = String(person.department || "").toLowerCase();
     if (value.includes("electrical")) return "Electrical";
     if (value.includes("mechanical")) return "Mechanical";
-    if (value.includes("leadership") || value.includes("operations") || value.includes("technical")) return "Leadership";
+    if (value.includes("leadership") || value.includes("operations") || value.includes("technical")) return "Executive Team";
     return person.department || "Team";
   }
 
@@ -96,7 +96,7 @@
   function renderPeople(people) {
     const team = sortedActive(people.filter((person) => person.kind !== "advisor"));
     const advisors = sortedActive(people.filter((person) => person.kind === "advisor"));
-    const groupOrder = ["Leadership", "Electrical", "Mechanical"];
+    const groupOrder = ["Executive Team", "Electrical", "Mechanical"];
     const groups = new Map();
     team.forEach((person) => {
       const department = personDepartment(person);
