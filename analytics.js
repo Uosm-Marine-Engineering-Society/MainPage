@@ -403,6 +403,26 @@
     });
   }
 
+  // Everything this file puts on the device, removed. Called when a visitor
+  // declines or later withdraws, so an earlier "accept" leaves nothing behind —
+  // and reset far enough that a fresh consent can start a clean visit.
+  function forget() {
+    stopped = true;
+    initialized = false;
+    visit = null;
+    queue = [];
+    clearTimeout(flushTimer);
+    clearInterval(heartbeatTimer);
+    flushTimer = null;
+    [visitorKey, sponsorKey, geoKey].forEach((key) => {
+      try { localStorage.removeItem(key); } catch { /* private mode */ }
+    });
+    try { sessionStorage.removeItem(sessionKey); } catch { /* private mode */ }
+  }
+
+  // Never called until the visitor has actively consented — see setupPrivacy in
+  // app.js. A first-party visitor id and an IP-derived location are not
+  // "strictly necessary", so under GDPR neither may run on a bare page load.
   function init(site = {}) {
     if (initialized || site.analyticsEnabled === false) return;
     initialized = true;
@@ -412,6 +432,7 @@
     const isPreview = location.protocol !== "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
     if (isPreview) return;
 
+    stopped = false;
     visit = buildVisit();
     enqueue("session_start", { label: document.title });
     enqueue("page_view", { label: document.title });
@@ -430,6 +451,7 @@
 
   window.ARUS_ANALYTICS = {
     init,
+    forget,
     track: enqueue
   };
 })();

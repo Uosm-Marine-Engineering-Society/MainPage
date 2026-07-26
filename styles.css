@@ -121,6 +121,9 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
   min-height: 46px;
   padding: 11px 20px;
   border: 1px solid transparent;
+  /* Every other .button on the page is an <a>; a <button> would otherwise pick
+     up the user agent's grey buttonface and not match. */
+  background: transparent;
   font-size: 15px;
   font-weight: 650;
   text-decoration: none;
@@ -450,6 +453,44 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
 .footer-admin { padding-left: 16px; border-left: 1px solid rgba(112, 194, 205, .35); color: #7f9fa9 !important; font-size: 11px; font-weight: 500; letter-spacing: .04em; opacity: .65; }
 .footer-admin:hover { color: var(--teal-light) !important; }
 
+/* ---------- Privacy notice ----------
+   Borrows the project-brief card: teal top rule, square corners, --line border.
+   It sits in the bottom corner rather than across the page because it is asking
+   a question, not blocking the content behind it. */
+
+.privacy-notice {
+  position: fixed;
+  z-index: 30;
+  bottom: 20px; left: 20px;
+  width: min(378px, calc(100% - 40px));
+  padding: 20px 22px 22px;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--teal);
+  background: var(--white);
+  box-shadow: 0 14px 38px rgba(9, 60, 80, .16);
+}
+.privacy-notice .brief-title { margin-bottom: 9px; }
+.privacy-copy { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.privacy-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+/* Equal footprint for both answers — the refusal is never the smaller target. */
+.privacy-actions .button { flex: 1 1 0; min-height: 42px; padding: 9px 16px; font-size: 14.5px; }
+
+.motion .privacy-notice { opacity: 0; transform: translateY(12px); }
+.motion .privacy-notice.is-in { opacity: 1; transform: none; transition: opacity .4s var(--ease), transform .4s var(--ease); }
+
+.footer-privacy {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--teal-light);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.footer-privacy:hover, .footer-privacy:focus-visible { color: var(--white); }
+
 /* ---------- Motion ----------
    The `motion` class is set by app.js only when the visitor has not
    asked for reduced motion, so content stays visible without JS. */
@@ -544,6 +585,8 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
   .panel, .funding-panel { padding: 24px; }
   .funding-figure { font-size: 29px; }
 
+  .privacy-notice { bottom: 12px; left: 12px; width: calc(100% - 24px); padding: 18px 18px 20px; }
+
   .contact { padding: 56px 0; }
   .footer-inner { display: grid; justify-items: start; gap: 20px; }
   .footer-inner img { width: 172px; }
@@ -561,7 +604,7 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
      prints in full. */
   .cost-items[hidden] { display: table-row-group !important; }
   .row-toggle::after { display: none; }
-  .site-header, .menu-toggle, .skip-link, .hero-actions, .contact-actions, .section-media { display: none; }
+  .site-header, .menu-toggle, .skip-link, .hero-actions, .contact-actions, .section-media, .privacy-notice { display: none; }
   /* Printers drop backgrounds, which would leave the metric band's light type
      on white paper. Put it back on the page palette instead. */
   .metric-band { background: none; }

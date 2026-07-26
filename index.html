@@ -456,10 +456,25 @@
       <div class="footer-meta">
         <div class="footer-links" id="footerLinks"></div>
         <span>© <span id="year"></span> <span data-site-text="clubName">Marine Engineering Society</span></span>
+        <button class="footer-privacy" type="button" data-privacy-reopen id="privacyReopen" hidden>Privacy</button>
         <a class="footer-admin" href="admin.html" aria-label="Admin login">Admin</a>
       </div>
     </div>
   </footer>
+
+  <!-- Consent gate for the visit analytics. It is revealed by app.js and starts
+       hidden, so a visitor who never gets the script is never measured either.
+       Accept and Decline are deliberately the same size and weight: making the
+       refusal harder to find than the agreement is what turns a consent notice
+       into a dark pattern. -->
+  <section class="privacy-notice" id="privacyNotice" role="region" aria-labelledby="privacyNoticeTitle" hidden>
+    <p class="brief-title" id="privacyNoticeTitle">Your privacy</p>
+    <p class="privacy-copy">We log visits so we can report on the campaign: your IP address and an approximate location drawn from it, your browser and device, and an ID kept in your browser to recognise a return visit. Decline and none of it runs — the site works the same either way.</p>
+    <div class="privacy-actions">
+      <button class="button button-primary" type="button" data-privacy-accept>Accept</button>
+      <button class="button button-quiet" type="button" data-privacy-decline>Decline</button>
+    </div>
+  </section>
 
   <script src="content.js"></script>
   <script src="supabase-config.js"></script>

@@ -3,6 +3,11 @@
   const config = window.ARUS_SUPABASE || {};
   const storageKey = "arus-content-v2";
   const legacyStorageKey = "arus-content-v1";
+  const consentKey = "arus-privacy-consent-v1";
+  const consentMaxAge = 365 * 24 * 60 * 60 * 1000;
+  // Temporarily off: flip to true to show the notice and gate analytics behind
+  // it again. All of the consent logic stays in place below either way.
+  const privacyNoticeEnabled = false;
   const siteKeys = ["projectName", "clubName", "navProposalLabel", "university", "proposalUrl", "contactEmail", "instagram", "linkedin", "footerText", "animations", "analyticsEnabled", "updatedAt"];
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -424,6 +429,73 @@
     window.addEventListener("resize", onScroll, { passive: true });
   }
 
+  // Consent is stored with the date it was given so it can go stale rather than
+  // stand forever: after a year the visitor is asked again instead of being held
+  // to one old click.
+  function storedConsent() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(consentKey) || "null");
+      if (saved?.choice !== "granted" && saved?.choice !== "denied") return null;
+      return Date.now() - Number(saved.at) > consentMaxAge ? null : saved.choice;
+    } catch {
+      return null;
+    }
+  }
+
+  // The analytics keep a first-party id and have a third party resolve the
+  // visitor's IP to a rough location. Neither is strictly necessary to serve the
+  // page, so under GDPR both need consent up front — analytics.js is not started
+  // anywhere else, and declining also wipes anything an earlier visit left.
+  function setupPrivacy(site) {
+    const notice = $("#privacyNotice");
+    const reopen = $("#privacyReopen");
+    if (!notice) return;
+
+    // privacyNoticeEnabled is off: skip straight to analytics, same as before
+    // this notice existed. The notice and footer reopen link stay out of view —
+    // both start `hidden` in index.html and nothing here reveals them.
+    if (!privacyNoticeEnabled) {
+      window.ARUS_ANALYTICS?.init(site);
+      return;
+    }
+
+    // Nothing to ask about: the admin has analytics off, or the visitor has
+    // already answered in their browser via Global Privacy Control.
+    if (site.analyticsEnabled === false || navigator.globalPrivacyControl === true) {
+      notice.remove();
+      return;
+    }
+
+    const show = (focus) => {
+      notice.hidden = false;
+      requestAnimationFrame(() => notice.classList.add("is-in"));
+      if (focus) notice.querySelector("[data-privacy-accept]").focus();
+    };
+
+    const decide = (choice) => {
+      try { localStorage.setItem(consentKey, JSON.stringify({ choice, at: Date.now() })); } catch { /* private mode */ }
+      notice.classList.remove("is-in");
+      notice.hidden = true;
+      if (choice === "granted") window.ARUS_ANALYTICS?.init(site);
+      else window.ARUS_ANALYTICS?.forget();
+      if (reopen) reopen.hidden = false;
+    };
+
+    notice.querySelector("[data-privacy-accept]").addEventListener("click", () => decide("granted"));
+    notice.querySelector("[data-privacy-decline]").addEventListener("click", () => decide("denied"));
+
+    // Withdrawing has to be as easy as agreeing, so the choice stays reachable
+    // from the footer for the whole visit.
+    const choice = storedConsent();
+    if (reopen) {
+      reopen.hidden = !choice;
+      reopen.addEventListener("click", () => show(true));
+    }
+
+    if (choice === "granted") window.ARUS_ANALYTICS?.init(site);
+    else if (!choice) show(false);
+  }
+
   function setupMotion(enabled) {
     if (enabled === false) {
       document.documentElement.classList.add("no-motion");
@@ -471,7 +543,7 @@
     const site = siteSettings(content.site || {});
 
     applySite(site);
-    window.ARUS_ANALYTICS?.init(site);
+    setupPrivacy(site);
     renderUpdates(content.project_updates || fallback.project_updates || []);
     renderPeople(content.people || fallback.people || []);
     renderPartners(content.partners || fallback.partners || []);
