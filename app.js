@@ -111,10 +111,17 @@
     $("#advisorList").innerHTML = advisors.map((person) => `<article class="advisor-card"><h3>${esc(person.name)}</h3><p>${esc(person.role || "Academic Advisor")}</p></article>`).join("");
   }
 
+  function partnerLogoUrl(partner) {
+    const logoUrl = String(partner.logo_url || "").trim();
+    if (logoUrl) return logoUrl;
+    return String(partner.name || "").trim().toLowerCase() === "hydrocomp" ? "assets/hydrocomp-logo.png" : "";
+  }
+
   function renderPartners(partners) {
     const rows = sortedActive(partners);
     $("#partnerList").innerHTML = rows.length ? rows.map((partner) => {
-      const logo = partner.logo_url ? `<img src="${esc(partner.logo_url)}" alt="${esc(partner.name)} logo">` : esc(initials(partner.name));
+      const logoUrl = partnerLogoUrl(partner);
+      const logo = logoUrl ? `<img src="${esc(logoUrl)}" alt="${esc(partner.name)} logo">` : esc(initials(partner.name));
       const name = partner.website_url ? `<a href="${esc(partner.website_url)}" target="_blank" rel="noreferrer">${esc(partner.name)}</a>` : esc(partner.name);
       return `<article class="partner-item"><div class="partner-logo">${logo}</div><div><span class="partner-tier">${esc(partner.tier || "Project partner")}</span><h3>${name}</h3><p>${esc(partner.description || "")}</p></div></article>`;
     }).join("") : `<p class="empty-state">Partner recognition will appear here as agreements are confirmed.</p>`;
