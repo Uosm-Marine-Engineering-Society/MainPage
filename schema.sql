@@ -674,7 +674,7 @@ where id = 'main' and not (content ? 'analyticsEnabled');
 
 -- Align existing seeded records with sponsorship proposal v2.3.
 delete from public.people
-where name in ('Balqis Husni', 'Professor Vun Jack', 'Professor Ana Mesbahi');
+where name in ('Bujee Shinebayar', 'Professor Vun Jack', 'Professor Ana Mesbahi');
 
 update public.people as person
 set kind = seed.kind,
@@ -685,15 +685,16 @@ set kind = seed.kind,
     active = seed.active
 from (
   values
-    ('team', 'Omar Ahmed', 'Team Leader & Treasurer', 'Leadership', '', 1, true),
+    ('team', 'Omar Ahmed', 'Team Leader', 'Leadership', '', 1, true),
     ('team', 'Ahmed Atheek', 'Technical Director', 'Leadership', '', 2, true),
-    ('team', 'Bujee Shinebayar', 'Secretary & Marketing', 'Leadership', '', 3, true),
-    ('team', 'Gauthaman Senthil', 'Head of Electrical', 'Electrical', '', 4, true),
-    ('team', 'Bernard Wong', 'Electrical Engineer', 'Electrical', '', 5, true),
-    ('team', 'Umair Hulwan', 'Electrical Engineer', 'Electrical', '', 6, true),
-    ('team', 'Ng Jen Shen', 'Head of Mechanical', 'Mechanical', '', 7, true),
-    ('team', 'Christopher Hall', 'Mechanical Engineer', 'Mechanical', '', 8, true),
-    ('team', 'Kuhaneshwara Nadaraja', 'Mechanical Engineer', 'Mechanical', '', 9, true),
+    ('team', 'Balqis Husni', 'Secretary', 'Leadership', '', 3, true),
+    ('team', 'Rebecca Tay Jia Yi', 'Treasurer', 'Leadership', '', 4, true),
+    ('team', 'Gauthaman Senthil', 'Head of Electrical', 'Electrical', '', 6, true),
+    ('team', 'Bernard Wong', 'Electrical Engineer', 'Electrical', '', 7, true),
+    ('team', 'Umair Hulwan', 'Electrical Engineer', 'Electrical', '', 8, true),
+    ('team', 'Ng Jen Shen', 'Head of Mechanical', 'Mechanical', '', 9, true),
+    ('team', 'Christopher Hall', 'Mechanical Engineer', 'Mechanical', '', 10, true),
+    ('team', 'Kuhaneshwara Nadaraja', 'Mechanical Engineer', 'Mechanical', '', 11, true),
     ('advisor', 'Professor Ehsan Mesbahi', 'Academic Advisor', '', '', 1, true),
     ('advisor', 'Professor Suan Hui Pu', 'Academic Advisor', '', '', 2, true),
     ('advisor', 'Dr. Vun Jack', 'Academic Advisor', '', '', 3, true),
@@ -704,15 +705,16 @@ where person.name = seed.name;
 insert into public.people (kind, name, role, department, bio, display_order, active)
 select * from (
   values
-    ('team', 'Omar Ahmed', 'Team Leader & Treasurer', 'Leadership', '', 1, true),
+    ('team', 'Omar Ahmed', 'Team Leader', 'Leadership', '', 1, true),
     ('team', 'Ahmed Atheek', 'Technical Director', 'Leadership', '', 2, true),
-    ('team', 'Bujee Shinebayar', 'Secretary & Marketing', 'Leadership', '', 3, true),
-    ('team', 'Gauthaman Senthil', 'Head of Electrical', 'Electrical', '', 4, true),
-    ('team', 'Bernard Wong', 'Electrical Engineer', 'Electrical', '', 5, true),
-    ('team', 'Umair Hulwan', 'Electrical Engineer', 'Electrical', '', 6, true),
-    ('team', 'Ng Jen Shen', 'Head of Mechanical', 'Mechanical', '', 7, true),
-    ('team', 'Christopher Hall', 'Mechanical Engineer', 'Mechanical', '', 8, true),
-    ('team', 'Kuhaneshwara Nadaraja', 'Mechanical Engineer', 'Mechanical', '', 9, true),
+    ('team', 'Balqis Husni', 'Secretary', 'Leadership', '', 3, true),
+    ('team', 'Rebecca Tay Jia Yi', 'Treasurer', 'Leadership', '', 4, true),
+    ('team', 'Gauthaman Senthil', 'Head of Electrical', 'Electrical', '', 6, true),
+    ('team', 'Bernard Wong', 'Electrical Engineer', 'Electrical', '', 7, true),
+    ('team', 'Umair Hulwan', 'Electrical Engineer', 'Electrical', '', 8, true),
+    ('team', 'Ng Jen Shen', 'Head of Mechanical', 'Mechanical', '', 9, true),
+    ('team', 'Christopher Hall', 'Mechanical Engineer', 'Mechanical', '', 10, true),
+    ('team', 'Kuhaneshwara Nadaraja', 'Mechanical Engineer', 'Mechanical', '', 11, true),
     ('advisor', 'Professor Ehsan Mesbahi', 'Academic Advisor', '', '', 1, true),
     ('advisor', 'Professor Suan Hui Pu', 'Academic Advisor', '', '', 2, true),
     ('advisor', 'Dr. Vun Jack', 'Academic Advisor', '', '', 3, true),
