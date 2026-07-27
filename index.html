@@ -14,7 +14,11 @@
   <meta name="twitter:card" content="summary_large_image">
   <title>Marine Engineering Society | UoSM ARUS I</title>
   <link rel="canonical" href="https://uosm-marine-engineering-society.github.io/MainPage/">
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <!-- The society mark, knocked out in white on the brand navy. The .ico carries
+       a separately tuned bitmap at 16/32/48/64 because the logo's hairlines
+       vanish at tab size unless they are thickened first. -->
+  <link rel="icon" href="assets/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="stylesheet" href="styles.css">
   <script type="application/ld+json">
   {
@@ -86,7 +90,7 @@
             <p class="brief-title">At a glance</p>
             <dl>
               <div><dt>Status</dt><dd>Research, rules review and concept selection</dd></div>
-              <div><dt>Members</dt><dd>11 students · 4 academic advisors</dd></div>
+              <div><dt>Members</dt><dd>10 students · 4 academic advisors</dd></div>
               <div><dt>Founding project</dt><dd>UoSM ARUS I</dd></div>
               <div><dt>Competition</dt><dd>Darwin qualifier · September 2027</dd></div>
             </dl>
@@ -370,7 +374,13 @@
       <div class="container">
         <header class="section-head reveal">
           <p class="section-label">Updates</p>
-          <h2>Latest</h2>
+          <div class="head-row">
+            <h2>Latest</h2>
+            <!-- The social accounts carry the day-to-day version of this
+                 section, so they sit with it rather than only in the footer.
+                 Filled by app.js and left out entirely when none are set. -->
+            <p class="section-social" id="updateSocial" hidden></p>
+          </div>
         </header>
         <div class="update-grid reveal" id="updateList"></div>
         <div class="update-more reveal">

@@ -19,6 +19,28 @@
   const clone = (value) => typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
   const initials = (name = "") => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
   const instagramMark = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5"/><circle cx="12" cy="12" r="4.1"/><circle cx="17.6" cy="6.6" r="1" class="social-dot"/></svg>';
+  const linkedinMark = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.2" y="3.2" width="17.6" height="17.6" rx="4"/><path d="M8 10.9v5.6"/><path d="M12.5 16.5v-5.6"/><path d="M12.5 13.5a2.35 2.35 0 0 1 4.7 0v3"/><circle cx="8" cy="7.9" r=".95" class="social-dot"/></svg>';
+
+  // "https://www.instagram.com/uosm_mes/" -> "@uosm_mes". Anything that is not a
+  // plain single-segment profile path falls back to the platform name.
+  const socialHandle = (url) => {
+    try {
+      const segments = new URL(url).pathname.split("/").filter(Boolean);
+      const name = segments.length === 1 ? segments[0] : "";
+      return /^[A-Za-z0-9._]+$/.test(name) ? `@${name}` : "";
+    } catch {
+      return "";
+    }
+  };
+
+  // The bundled value in content.js stands in while the field is blank in the
+  // database, which is how the footer link has always behaved.
+  function socialAccounts(site) {
+    return [
+      { url: site.instagram || fallback.site?.instagram || "", mark: instagramMark, name: "Instagram" },
+      { url: site.linkedin || fallback.site?.linkedin || "", mark: linkedinMark, name: "LinkedIn" }
+    ].filter((account) => account.url).map((account) => ({ ...account, label: socialHandle(account.url) || account.name }));
+  }
   const formatDate = (value) => {
     const date = new Date(`${value || ""}T00:00:00`);
     return Number.isNaN(date.getTime()) ? "Project update" : new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "long", year: "numeric" }).format(date);
@@ -262,11 +284,17 @@
     const updated = String(site.updatedAt || "").slice(0, 10);
     $("#siteUpdated").textContent = /^\d{4}-\d{2}-\d{2}$/.test(updated) ? `Site content updated ${formatDate(updated)}` : "";
 
-    const instagram = site.instagram || fallback.site?.instagram || "";
-    $("#footerLinks").innerHTML = [
-      instagram ? `<a class="footer-social" href="${esc(instagram)}" target="_blank" rel="noreferrer" aria-label="Instagram" title="Instagram">${instagramMark}<span class="visually-hidden">Instagram</span></a>` : "",
-      site.linkedin ? `<a href="${esc(site.linkedin)}" target="_blank" rel="noreferrer">LinkedIn</a>` : ""
-    ].join("");
+    const accounts = socialAccounts(site);
+
+    // Beside the "Latest" heading: named, since there is room for the handle.
+    const social = $("#updateSocial");
+    social.hidden = !accounts.length;
+    social.innerHTML = accounts.map((account) =>
+      `<a class="social-link" href="${esc(account.url)}" target="_blank" rel="noreferrer">${account.mark}<span>${esc(account.label)}</span></a>`).join("");
+
+    // In the footer: marks only, with the name carried for assistive tech.
+    $("#footerLinks").innerHTML = accounts.map((account) =>
+      `<a class="footer-social" href="${esc(account.url)}" target="_blank" rel="noreferrer" aria-label="${esc(account.name)}" title="${esc(account.name)}">${account.mark}<span class="visually-hidden">${esc(account.name)}</span></a>`).join("");
   }
 
   function setupNavigation() {
