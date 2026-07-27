@@ -8,7 +8,11 @@
   // Temporarily off: flip to true to show the notice and gate analytics behind
   // it again. All of the consent logic stays in place below either way.
   const privacyNoticeEnabled = false;
-  const siteKeys = ["projectName", "clubName", "navProposalLabel", "university", "proposalUrl", "contactEmail", "instagram", "linkedin", "footerText", "animations", "analyticsEnabled", "updatedAt"];
+  const siteKeys = ["projectName", "clubName", "navProposalLabel", "university", "proposalUrl", "contactEmail", "instagram", "linkedin", "footerText", "sections", "updatesVisible", "animations", "analyticsEnabled", "updatedAt"];
+  const DEFAULT_SECTIONS = ["Executive Team", "Electrical", "Mechanical"];
+  // Department values written before sections were configurable. Matched as
+  // substrings, which is what the original grouping did, so nobody moves.
+  const SECTION_ALIASES = [["electrical", "Electrical"], ["mechanical", "Mechanical"], ["leadership", "Executive Team"], ["operations", "Executive Team"], ["technical", "Executive Team"]];
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
   const esc = (value = "") => String(value).replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
@@ -79,24 +83,71 @@
   // Manual order first, publication date second. Where display_order is absent
   // or still on its shared default every row ties, so the date decides and the
   // ordering is identical to before the column existed.
-  function renderUpdates(updates) {
+  function renderUpdates(updates, site) {
     const rows = (updates || [])
       .filter((item) => item.active !== false)
       .sort((a, b) => (Number(a.display_order) || 0) - (Number(b.display_order) || 0)
-        || new Date(b.published_at) - new Date(a.published_at))
-      .slice(0, 3);
-    $("#updateList").innerHTML = rows.length ? rows.map((item) => {
+        || new Date(b.published_at) - new Date(a.published_at));
+
+    const configured = Number(site?.updatesVisible);
+    const visible = Number.isFinite(configured) && configured > 0 ? Math.floor(configured) : 3;
+    const toggle = $("#updateToggle");
+
+    if (!rows.length) {
+      $("#updateList").innerHTML = `<p class="empty-state">Project updates will appear here.</p>`;
+      toggle.hidden = true;
+      return;
+    }
+
+    // Everything is rendered; the overflow carries `hidden`, which keeps it out
+    // of the tab order and away from screen readers until it is asked for.
+    $("#updateList").innerHTML = rows.map((item, index) => {
       const link = item.link_url ? `<a href="${esc(item.link_url)}" target="_blank" rel="noreferrer">Read update</a>` : "";
-      return `<article class="update-item"><time datetime="${esc(item.published_at)}">${esc(formatDate(item.published_at))}</time><h3>${esc(item.title)}</h3><p>${esc(item.summary)}</p>${link}</article>`;
-    }).join("") : `<p class="empty-state">Project updates will appear here.</p>`;
+      const category = item.category ? `<span class="update-tag">${esc(item.category)}</span>` : "";
+      const extra = index >= visible;
+      return `<article class="update-item"${extra ? ` data-update-extra hidden` : ""}>
+        <p class="update-meta"><time datetime="${esc(item.published_at)}">${esc(formatDate(item.published_at))}</time>${category}</p>
+        <h3>${esc(item.title)}</h3><p>${esc(item.summary)}</p>${link}</article>`;
+    }).join("");
+
+    const hiddenCount = Math.max(0, rows.length - visible);
+    toggle.hidden = hiddenCount === 0;
+    if (hiddenCount) {
+      toggle.dataset.count = String(rows.length);
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.textContent = `Show all ${rows.length} updates`;
+    }
   }
 
-  function personDepartment(person) {
-    const value = String(person.department || "").toLowerCase();
-    if (value.includes("electrical")) return "Electrical";
-    if (value.includes("mechanical")) return "Mechanical";
-    if (value.includes("leadership") || value.includes("operations") || value.includes("technical")) return "Executive Team";
-    return person.department || "Team";
+  function setupUpdateToggle() {
+    const toggle = $("#updateToggle");
+    toggle.addEventListener("click", () => {
+      const open = toggle.getAttribute("aria-expanded") === "true";
+      $$("[data-update-extra]").forEach((item) => { item.hidden = open; });
+      toggle.setAttribute("aria-expanded", String(!open));
+      toggle.textContent = open ? `Show all ${toggle.dataset.count} updates` : "Show fewer";
+      // Collapsing from far down the list would otherwise leave the reader
+      // stranded below the section that just shrank.
+      if (open) $("#updates").scrollIntoView({ behavior: motionAllowed(true) ? "smooth" : "auto", block: "start" });
+    });
+  }
+
+  const siteSections = (site) => {
+    const configured = Array.isArray(site?.sections) ? site.sections.map((name) => String(name).trim()).filter(Boolean) : [];
+    return configured.length ? configured : DEFAULT_SECTIONS;
+  };
+
+  // An exact match against a configured section wins; otherwise the legacy
+  // aliases apply; otherwise the department stands on its own so a person is
+  // never dropped just because their section was renamed or removed.
+  function personDepartment(person, sections) {
+    const raw = String(person.department || "").trim();
+    if (!raw) return sections[0] || "Team";
+    const exact = sections.find((name) => name.toLowerCase() === raw.toLowerCase());
+    if (exact) return exact;
+    const lower = raw.toLowerCase();
+    const alias = SECTION_ALIASES.find(([needle]) => lower.includes(needle));
+    return alias ? alias[1] : raw;
   }
 
   function personCard(person) {
@@ -106,17 +157,17 @@
     return `<article class="person-card"><div class="person-photo">${photo}</div><div class="person-body"><h3>${esc(person.name)}</h3><p class="person-role">${esc(person.role)}</p>${bio}${profile}</div></article>`;
   }
 
-  function renderPeople(people) {
+  function renderPeople(people, site) {
+    const sections = siteSections(site);
     const team = sortedActive(people.filter((person) => person.kind !== "advisor"));
     const advisors = sortedActive(people.filter((person) => person.kind === "advisor"));
-    const groupOrder = ["Executive Team", "Electrical", "Mechanical"];
     const groups = new Map();
     team.forEach((person) => {
-      const department = personDepartment(person);
+      const department = personDepartment(person, sections);
       if (!groups.has(department)) groups.set(department, []);
       groups.get(department).push(person);
     });
-    const names = [...groupOrder.filter((name) => groups.has(name)), ...[...groups.keys()].filter((name) => !groupOrder.includes(name))];
+    const names = [...sections.filter((name) => groups.has(name)), ...[...groups.keys()].filter((name) => !sections.includes(name))];
     $("#teamList").innerHTML = names.length
       ? names.map((department) => `<section class="team-group"><h3>${esc(department)}</h3><div class="people-grid">${groups.get(department).map(personCard).join("")}</div></section>`).join("")
       : `<p class="empty-state">Team profiles will appear here.</p>`;
@@ -541,12 +592,13 @@
 
     applySite(site);
     setupPrivacy(site);
-    renderUpdates(content.project_updates || fallback.project_updates || []);
-    renderPeople(content.people || fallback.people || []);
+    renderUpdates(content.project_updates || fallback.project_updates || [], site);
+    renderPeople(content.people || fallback.people || [], site);
     renderPartners(content.partners || fallback.partners || []);
     $("#year").textContent = new Date().getFullYear();
 
     setupNavigation();
+    setupUpdateToggle();
     setupMotion(site.animations !== false);
     setupHeroVideo(site.animations !== false);
     if (motionAllowed(site.animations !== false)) setupParallax();

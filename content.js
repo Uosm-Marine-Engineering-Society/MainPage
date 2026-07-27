@@ -9,6 +9,12 @@ window.ARUS_CONTENT = {
     instagram: "https://www.instagram.com/uosm_mes/",
     linkedin: "",
     footerText: "Marine Engineering Society · University of Southampton Malaysia",
+    // Team sections, in the order they appear on the website. Editable from the
+    // admin, so a new department needs no code change. Academic advisors are a
+    // separate category rather than a section and always come last.
+    sections: ["Executive Team", "Electrical", "Mechanical"],
+    // How many updates show before the "Show all" button appears.
+    updatesVisible: 3,
     animations: true,
     analyticsEnabled: true,
     updatedAt: "2026-07-25"
@@ -30,9 +36,9 @@ window.ARUS_CONTENT = {
     { id: "ana-mesbahi", kind: "advisor", name: "Dr. Ana Mesbahi", role: "Academic Advisor", department: "", bio: "", image_url: "", image_path: "", profile_url: "", display_order: 4, active: true }
   ],
   project_updates: [
-    { id: "campaign-target", title: "Campaign target set at RM150,000", summary: "Working target for the Darwin-to-Monaco sponsorship campaign, against a costed engineering scope of RM81,826.", published_at: "2026-07-21", link_url: "", active: true },
-    { id: "competition-pathway", title: "Darwin qualifier scheduled for September 2027", summary: "We're preparing for the Darwin Asia-Pacific Qualifier. Monaco follows only if qualification is secured.", published_at: "2026-07-17", link_url: "", active: true },
-    { id: "mes-student-office", title: "Marine Engineering Society registration submitted", summary: "We submitted our registration in July 2026. ARUS I is our founding project.", published_at: "2026-07-17", link_url: "", active: true }
+    { id: "campaign-target", title: "Campaign target set at RM150,000", summary: "Working target for the Darwin-to-Monaco sponsorship campaign, against a costed engineering scope of RM81,826.", published_at: "2026-07-21", link_url: "", category: "Sponsorship", display_order: 1, active: true },
+    { id: "competition-pathway", title: "Darwin qualifier scheduled for September 2027", summary: "We're preparing for the Darwin Asia-Pacific Qualifier. Monaco follows only if qualification is secured.", published_at: "2026-07-17", link_url: "", category: "Competition", display_order: 2, active: true },
+    { id: "mes-student-office", title: "Marine Engineering Society registration submitted", summary: "We submitted our registration in July 2026. ARUS I is our founding project.", published_at: "2026-07-17", link_url: "", category: "Society", display_order: 3, active: true }
   ],
   partners: [
     { id: "hydrocomp", name: "HydroComp", tier: "Project Supporter", description: "Supporting our marine engineering and competition work.", logo_url: "assets/hydrocomp-logo.png", logo_path: "", website_url: "", display_order: 1, active: true }

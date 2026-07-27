@@ -4,7 +4,11 @@
   const storageKey = "arus-content-v2";
   const legacyStorageKey = "arus-content-v1";
   const localSessionKey = "arus-admin-local-session-v1";
-  const siteKeys = ["projectName", "clubName", "navProposalLabel", "university", "contactEmail", "proposalUrl", "footerText", "instagram", "linkedin", "animations", "analyticsEnabled", "updatedAt"];
+  const siteKeys = ["projectName", "clubName", "navProposalLabel", "university", "contactEmail", "proposalUrl", "footerText", "instagram", "linkedin", "sections", "updatesVisible", "animations", "analyticsEnabled", "updatedAt"];
+  const DEFAULT_SECTIONS = ["Executive Team", "Electrical", "Mechanical"];
+  // Kept in step with SECTION_ALIASES in app.js: department values written
+  // before teams were configurable still group the way they always did.
+  const SECTION_ALIASES = [["electrical", "Electrical"], ["mechanical", "Mechanical"], ["leadership", "Executive Team"], ["operations", "Executive Team"], ["technical", "Executive Team"]];
   const configured = Boolean(config.url && config.publishableKey && window.supabase);
   const client = configured ? window.supabase.createClient(config.url, config.publishableKey) : null;
   let remoteMode = false;
@@ -14,6 +18,7 @@
   // have not run the latest schema.sql yet keep working: the column is probed
   // once, and when it is missing the admin sorts by date and never writes it.
   let updatesOrderable = true;
+  let updatesCategorised = true;
 
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -79,13 +84,21 @@
     toast.timer = setTimeout(() => { element.className = "toast"; }, 3200);
   }
 
-  // One cheap probe rather than trusting the schema: asking for the column is
-  // the only reliable way to know it is there, and it works on an empty table.
-  async function detectUpdateOrdering() {
-    if (!remoteMode) { updatesOrderable = true; return; }
-    const probe = await client.from("project_updates").select("display_order").limit(1);
-    updatesOrderable = !probe.error;
-    if (probe.error) console.warn("project_updates.display_order is missing; ordering updates by date. Run the latest schema.sql to enable manual ordering.");
+  // One cheap probe per column rather than trusting the schema: asking for the
+  // column is the only reliable way to know it is there, and it works on an
+  // empty table. Each feature is detected on its own so a partly-migrated
+  // database still gets whatever it does have.
+  async function detectUpdateColumns() {
+    if (!remoteMode) { updatesOrderable = true; updatesCategorised = true; return; }
+    const [order, category] = await Promise.all([
+      client.from("project_updates").select("display_order").limit(1),
+      client.from("project_updates").select("category").limit(1)
+    ]);
+    updatesOrderable = !order.error;
+    updatesCategorised = !category.error;
+    if (order.error || category.error) {
+      console.warn("project_updates is missing newer columns; run the latest schema.sql to enable manual ordering and categories.");
+    }
   }
 
   async function loadRemote() {
@@ -150,36 +163,101 @@
   // rewrite it. Sections and their order mirror personDepartment()/renderPeople()
   // in app.js: what the admin shows is the order the website will render.
 
-  const TEAM_SECTIONS = ["Executive Team", "Electrical", "Mechanical"];
   const isAdvisor = (person) => (person.kind || "team") === "advisor";
   const byOrder = (a, b) => (Number(a.display_order) || 999) - (Number(b.display_order) || 999);
   const nextOrder = (rows) => rows.reduce((top, row) => Math.max(top, Number(row.display_order) || 0), 0) + 1;
 
+  const teamSections = () => {
+    const configured = Array.isArray(state.site.sections) ? state.site.sections.map((name) => String(name).trim()).filter(Boolean) : [];
+    return configured.length ? configured : [...DEFAULT_SECTIONS];
+  };
+
   function personSection(person) {
     if (isAdvisor(person)) return "Academic advisors";
-    const value = String(person.department || "").toLowerCase();
-    if (value.includes("electrical")) return "Electrical";
-    if (value.includes("mechanical")) return "Mechanical";
-    if (value.includes("leadership") || value.includes("operations") || value.includes("technical")) return "Executive Team";
-    return person.department || "Team";
+    const raw = String(person.department || "").trim();
+    const sections = teamSections();
+    if (!raw) return sections[0] || "Team";
+    const exact = sections.find((name) => name.toLowerCase() === raw.toLowerCase());
+    if (exact) return exact;
+    const lower = raw.toLowerCase();
+    const alias = SECTION_ALIASES.find(([needle]) => lower.includes(needle));
+    return alias ? alias[1] : raw;
   }
 
   function peopleSections() {
     const team = state.people.filter((person) => !isAdvisor(person)).sort(byOrder);
     const advisors = state.people.filter(isAdvisor).sort(byOrder);
+    const configured = teamSections();
     const groups = new Map();
+    // Configured teams are listed even when empty, so a team you just created is
+    // visible and can be reordered before anyone is put in it.
+    configured.forEach((name) => groups.set(name, []));
     team.forEach((person) => {
       const key = personSection(person);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(person);
     });
     const names = [
-      ...TEAM_SECTIONS.filter((name) => groups.has(name)),
-      ...[...groups.keys()].filter((name) => !TEAM_SECTIONS.includes(name))
+      ...configured.filter((name) => groups.has(name)),
+      ...[...groups.keys()].filter((name) => !configured.includes(name))
     ];
     const sections = names.map((name) => [name, groups.get(name)]);
     if (advisors.length) sections.push(["Academic advisors", advisors]);
     return sections;
+  }
+
+  // ---- Teams ---------------------------------------------------------------
+
+  async function saveSections(sections) {
+    await saveSite({ ...state.site, sections, updatedAt: new Date().toISOString() });
+  }
+
+  function renderSections() {
+    const sections = teamSections();
+    const counts = new Map();
+    state.people.filter((person) => !isAdvisor(person)).forEach((person) => {
+      const key = personSection(person);
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    // Departments nobody configured but somebody still belongs to. They show as
+    // read-only so it is obvious why an extra heading appears on the website.
+    const strays = [...counts.keys()].filter((name) => !sections.includes(name));
+
+    $("#sectionAdminList").innerHTML = sections.map((name, index) => {
+      const used = counts.get(name) || 0;
+      return `<article class="admin-item section-item">
+        ${moveButtons("sections", name, index === 0, index === sections.length - 1)}
+        <div class="item-body">
+          <h4>${esc(name)}</h4>
+          <p>${used ? `${used} ${used === 1 ? "person" : "people"}` : "Empty"}</p>
+        </div>
+        <div class="item-actions">
+          <button type="button" data-rename-section="${esc(name)}">Rename</button>
+          <button class="delete" type="button" data-delete-section="${esc(name)}"${used ? " disabled title=\"Move these people to another team first\"" : ""}>Delete</button>
+        </div>
+      </article>`;
+    }).join("") + strays.map((name) => `<article class="admin-item section-item is-stray">
+      <div class="item-order is-off"></div>
+      <div class="item-body"><h4>${esc(name)}</h4><p>${counts.get(name)} ${counts.get(name) === 1 ? "person" : "people"} · not a configured team</p></div>
+      <div class="item-actions"><button type="button" data-adopt-section="${esc(name)}">Add as team</button></div>
+    </article>`).join("");
+
+    // Keep the person form's chooser and the update category suggestions honest.
+    const chooser = $("#personForm").elements.department;
+    const current = chooser.value;
+    chooser.innerHTML = sections.map((name) => `<option value="${esc(name)}">${esc(name)}</option>`).join("");
+    if (current && sections.includes(current)) chooser.value = current;
+  }
+
+  async function moveSection(name, delta) {
+    const sections = teamSections();
+    const at = sections.indexOf(name);
+    const target = at + delta;
+    if (at < 0 || target < 0 || target >= sections.length) return;
+    [sections[at], sections[target]] = [sections[target], sections[at]];
+    await saveSections(sections);
+    renderSections();
+    renderPeople();
   }
 
   function orderedUpdates() {
@@ -257,25 +335,35 @@
     const rows = orderedUpdates();
     const note = $("#updateOrderNote");
     if (note) {
+      const shown = Math.max(1, Number(state.site.updatesVisible) || 3);
       note.textContent = updatesOrderable
-        ? "Top to bottom is the order on the website, which shows the first three visible updates."
+        ? `Top to bottom is the order on the website. The first ${shown} show straight away; the rest sit behind “Show all”.`
         : "Ordered by publication date. Run the latest schema.sql to arrange these by hand.";
     }
+    const visible = Math.max(1, Number(state.site.updatesVisible) || 3);
     $("#updateCount").textContent = rows.length ? `${rows.length} update${rows.length === 1 ? "" : "s"}` : "";
+    $("#updateCategoryField").classList.toggle("hidden", !updatesCategorised);
+    // Suggest the categories already in use rather than inventing a fixed list.
+    $("#updateCategories").innerHTML = [...new Set(rows.map((row) => (row.category || "").trim()).filter(Boolean))]
+      .map((name) => `<option value="${esc(name)}"></option>`).join("");
+
     $("#updateAdminList").innerHTML = rows.length ? rows.map((item, index) => {
       const live = rows.filter((row) => row.active !== false).indexOf(item);
+      const flag = live === -1 ? ""
+        : live < visible ? `<span class="item-flag is-live">Shown on the website</span>`
+          : `<span class="item-flag">Behind “Show all”</span>`;
       return adminRow({
         scope: "project_updates",
         table: "project_updates",
         id: item.id,
         thumb: "NEWS",
         title: item.title,
-        sub: item.summary,
+        sub: `${item.category ? `${item.category} · ` : ""}${item.summary}`,
         active: item.active,
         first: index === 0,
         last: index === rows.length - 1,
         orderable: updatesOrderable,
-        flag: live > -1 && live < 3 ? `<span class="item-flag is-live">On the website</span>` : `<span class="item-flag">Not in the top three</span>`
+        flag
       });
     }).join("") : `<div class="empty">No project updates yet.</div>`;
   }
@@ -350,6 +438,29 @@
       else renderPartners();
     } catch (error) {
       toast(error?.message || "Could not change the order.", true);
+    }
+  }
+
+  // Renaming rewrites every person pointing at the old name, so nobody is left
+  // in a team that no longer exists. The people are patched first: if that fails
+  // the section list is untouched and the two never disagree.
+  async function renameSection(from, to) {
+    const sections = teamSections();
+    const clean = to.trim();
+    if (!clean || clean === from) return;
+    if (sections.some((name) => name.toLowerCase() === clean.toLowerCase())) {
+      toast("A team with that name already exists.", true);
+      return;
+    }
+    try {
+      const affected = state.people.filter((person) => !isAdvisor(person) && personSection(person) === from);
+      for (const person of affected) await patchRow("people", person.id, { department: clean });
+      await saveSections(sections.map((name) => (name === from ? clean : name)));
+      renderSections();
+      renderPeople();
+      toast(affected.length ? `Renamed. ${affected.length} ${affected.length === 1 ? "person" : "people"} moved with it.` : "Team renamed.");
+    } catch (error) {
+      toast(error?.message || "Could not rename the team.", true);
     }
   }
 
@@ -754,6 +865,7 @@
   }
 
   function renderAll() {
+    renderSections();
     renderPeople();
     renderUpdates();
     renderPartners();
@@ -940,7 +1052,7 @@
         throw new Error("This account is not approved to manage website content.");
       }
       remoteMode = true;
-      await detectUpdateOrdering();
+      await detectUpdateColumns();
       await loadRemote();
       showPortal();
     } catch (error) {
@@ -975,6 +1087,9 @@
     const next = {
       ...state.site,
       ...text,
+      // Number fields arrive from FormData as strings; store a real number so the
+      // website never has to guess. Out-of-range values fall back to the default.
+      updatesVisible: Math.min(24, Math.max(1, Number(text.updatesVisible) || 3)),
       animations: form.elements.animations.checked,
       analyticsEnabled: form.elements.analyticsEnabled.checked,
       updatedAt: new Date().toISOString()
@@ -982,6 +1097,7 @@
     try {
       await saveSite(next);
       fillSettings();
+      renderUpdates();
       toast("Site settings saved.");
     } catch (error) {
       toast(error?.message || "Could not save site settings.", true);
@@ -993,11 +1109,12 @@
     const form = event.currentTarget;
     const data = dataFromForm(form);
     const row = { id: data.id || newId(), title: data.title.trim(), summary: data.summary.trim(), published_at: data.published_at, link_url: data.link_url.trim(), active: form.elements.active.checked };
-    // Only sent when the column exists, so a database still on the older schema
+    // Only sent when the columns exist, so a database still on the older schema
     // saves updates exactly as it did before.
     if (updatesOrderable) {
       row.display_order = Number(data.display_order) || nextOrder(state.project_updates);
     }
+    if (updatesCategorised) row.category = (data.category || "").trim();
     try {
       await saveRow("project_updates", row);
       resetForm("updateForm");
@@ -1027,6 +1144,7 @@
       await saveRow("people", row);
       if (media.oldPath && media.oldPath !== media.path) await removeStorage(media.oldPath);
       resetForm("personForm");
+      renderSections();
       renderPeople();
       toast("Person saved.");
     } catch (error) {
@@ -1171,7 +1289,52 @@
       return;
     }
     const move = event.target.closest("[data-move]");
-    if (move) { await moveItem(move.dataset.move, move.dataset.moveId, Number(move.dataset.dir)); return; }
+    if (move) {
+      if (move.dataset.move === "sections") await moveSection(move.dataset.moveId, Number(move.dataset.dir));
+      else await moveItem(move.dataset.move, move.dataset.moveId, Number(move.dataset.dir));
+      return;
+    }
+    const rename = event.target.closest("[data-rename-section]");
+    if (rename) {
+      const from = rename.dataset.renameSection;
+      const to = prompt(`Rename “${from}” to:`, from);
+      if (to !== null) await renameSection(from, to);
+      return;
+    }
+    const dropSection = event.target.closest("[data-delete-section]");
+    if (dropSection) {
+      const name = dropSection.dataset.deleteSection;
+      // Re-checked here as well as on the button: the count could have gone
+      // stale, and deleting a populated team would strand those people.
+      const occupied = state.people.filter((person) => !isAdvisor(person) && personSection(person) === name).length;
+      if (occupied) {
+        renderSections();
+        toast(`“${name}” still has ${occupied} ${occupied === 1 ? "person" : "people"} in it. Move them to another team first.`, true);
+        return;
+      }
+      if (!confirm(`Delete the “${name}” team? Nobody is in it, so nothing else changes.`)) return;
+      try {
+        await saveSections(teamSections().filter((item) => item !== name));
+        renderSections();
+        renderPeople();
+        toast("Team deleted.");
+      } catch (error) {
+        toast(error?.message || "Could not delete the team.", true);
+      }
+      return;
+    }
+    const adopt = event.target.closest("[data-adopt-section]");
+    if (adopt) {
+      try {
+        await saveSections([...teamSections(), adopt.dataset.adoptSection]);
+        renderSections();
+        renderPeople();
+        toast("Team added.");
+      } catch (error) {
+        toast(error?.message || "Could not add the team.", true);
+      }
+      return;
+    }
     const toggle = event.target.closest("[data-toggle-table]");
     if (toggle) { await toggleVisible(toggle.dataset.toggleTable, toggle.dataset.toggleId); return; }
     const edit = event.target.closest("[data-edit-table]");
@@ -1213,6 +1376,26 @@
       : "New people are added to the end of their section.";
   }
 
+  $("#sectionForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const field = event.currentTarget.elements.name;
+    const name = field.value.trim();
+    if (!name) return;
+    if (teamSections().some((item) => item.toLowerCase() === name.toLowerCase())) {
+      toast("That team already exists.", true);
+      return;
+    }
+    try {
+      await saveSections([...teamSections(), name]);
+      field.value = "";
+      renderSections();
+      renderPeople();
+      toast(`“${name}” added. Assign people to it from the form on the left.`);
+    } catch (error) {
+      toast(error?.message || "Could not add the team.", true);
+    }
+  });
+
   $("#personForm").elements.kind.addEventListener("change", syncPersonKind);
   $("#personSearch").addEventListener("input", (event) => {
     personFilter = event.target.value;
@@ -1240,7 +1423,7 @@
       const session = await client.auth.getSession();
       if (session.data.session && await hasAdminAccess()) {
         remoteMode = true;
-        await detectUpdateOrdering();
+        await detectUpdateColumns();
       await loadRemote();
         showPortal();
       } else {

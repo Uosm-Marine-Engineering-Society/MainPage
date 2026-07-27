@@ -62,7 +62,10 @@
                 <div class="field full"><label>Title<input required name="title"></label></div>
                 <div class="field full"><label>Summary<textarea required name="summary" rows="4"></textarea></label></div>
                 <div class="field"><label>Publication date<input required name="published_at" type="date"></label></div>
-                <div class="field"><label>Optional link<input name="link_url" type="url" placeholder="https://"></label></div>
+                <div class="field" id="updateCategoryField"><label>Category<input name="category" list="updateCategories" placeholder="Milestone" maxlength="30"><small class="field-note">Optional label shown beside the date.</small></label>
+                  <datalist id="updateCategories"></datalist>
+                </div>
+                <div class="field full"><label>Optional link<input name="link_url" type="url" placeholder="https://"></label></div>
                 <label class="check full"><input name="active" type="checkbox" checked>Visible on website</label>
                 <div class="form-actions full"><button class="button button-primary" type="submit">Save update</button><button class="button button-secondary" type="button" data-reset="updateForm">Clear</button></div>
               </form>
@@ -88,11 +91,7 @@
                 <input type="hidden" name="image_path">
                 <input type="hidden" name="display_order">
                 <div class="field"><label>Category<select name="kind"><option value="team">Team member</option><option value="advisor">Academic advisor</option></select></label></div>
-                <div class="field"><label>Section<select name="department">
-                  <option value="Leadership">Executive Team</option>
-                  <option value="Electrical">Electrical</option>
-                  <option value="Mechanical">Mechanical</option>
-                </select><small class="field-note">Which heading they appear under on the website.</small></label></div>
+                <div class="field"><label>Team<select name="department"></select><small class="field-note">Which heading they appear under on the website.</small></label></div>
                 <div class="field"><label>Name<input required name="name"></label></div>
                 <div class="field"><label>Role<input required name="role" placeholder="Head of Electrical"></label></div>
                 <div class="field full"><label>Profile URL<input name="profile_url" type="url" placeholder="https://"><small class="field-note">Optional. Adds a link from their name.</small></label></div>
@@ -106,13 +105,29 @@
               </form>
             </div>
           </article>
-          <article class="card">
-            <div class="card-heading with-tools">
-              <div><h2>People</h2><p>Grouped exactly as they appear on the website. Use the arrows to reorder.</p></div>
-              <input class="list-search" id="personSearch" type="search" placeholder="Search people" aria-label="Search people">
-            </div>
-            <div class="card-body"><div class="admin-list grouped" id="personAdminList"></div></div>
-          </article>
+          <div class="stack">
+            <article class="card">
+              <div class="card-heading with-tools">
+                <div><h2>Teams</h2><p>The section headings on the website, in order. Renaming one moves everyone in it.</p></div>
+              </div>
+              <div class="card-body">
+                <div class="admin-list" id="sectionAdminList"></div>
+                <form class="inline-form" id="sectionForm">
+                  <label class="visually-hidden" for="sectionName">New team name</label>
+                  <input id="sectionName" name="name" placeholder="New team name, e.g. Software" maxlength="40" required>
+                  <button class="button button-secondary" type="submit">Add team</button>
+                </form>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="card-heading with-tools">
+                <div><h2>People</h2><p>Grouped exactly as they appear on the website. Use the arrows to reorder.</p></div>
+                <input class="list-search" id="personSearch" type="search" placeholder="Search people" aria-label="Search people">
+              </div>
+              <div class="card-body"><div class="admin-list grouped" id="personAdminList"></div></div>
+            </article>
+          </div>
         </div>
       </section>
 
@@ -301,6 +316,7 @@
               <div class="field"><label>Contact email<input name="contactEmail" type="email" placeholder="team@example.com"></label></div>
               <div class="field full"><label>Proposal URL<input required name="proposalUrl"></label></div>
               <div class="field full"><label>Footer text<input name="footerText"></label></div>
+              <div class="field"><label>Updates shown before “Show all”<input name="updatesVisible" type="number" min="1" max="24" step="1"><small class="field-note">The rest stay one click away on the website.</small></label></div>
               <div class="field"><label>Instagram URL<input name="instagram" type="url" placeholder="https://"></label></div>
               <div class="field"><label>LinkedIn URL<input name="linkedin" type="url" placeholder="https://"></label></div>
               <label class="check full"><input name="animations" type="checkbox" checked>Enable page animations</label>

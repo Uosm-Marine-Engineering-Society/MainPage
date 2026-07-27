@@ -63,15 +63,20 @@ create table if not exists public.project_updates (
   published_at date not null default current_date,
   link_url text not null default '',
   display_order integer not null default 10 check (display_order > 0),
+  category text not null default '',
   active boolean not null default true,
   updated_at timestamptz not null default now()
 );
 
--- Added after the first release, so existing databases need it too. While every
--- row shares the default the website falls back to publication date, which is
--- exactly how updates were ordered before this column existed.
+-- Both added after the first release, so existing databases need them too. The
+-- admin probes for each column and simply leaves the feature out when it is
+-- missing, so running this is what turns manual ordering and categories on.
+-- While every row shares the display_order default the website falls back to
+-- publication date, exactly how updates were ordered before the column existed.
 alter table public.project_updates
   add column if not exists display_order integer not null default 10 check (display_order > 0);
+alter table public.project_updates
+  add column if not exists category text not null default '';
 
 create table if not exists public.partners (
   id uuid primary key default gen_random_uuid(),

@@ -376,7 +376,13 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
 
 .update-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; }
 .update-item { padding-top: 20px; border-top: 2px solid var(--teal); }
-.update-item time { display: block; margin-bottom: 11px; color: var(--teal); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+/* Date and category share one line of micro-caps, split by a hairline so the
+   category reads as a label rather than a second sentence. */
+.update-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin-bottom: 11px; }
+.update-item time { color: var(--teal); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.update-tag { padding-left: 9px; border-left: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.update-more { display: flex; justify-content: center; margin-top: 44px; }
+.update-more .button { min-width: 220px; }
 .update-item h3 { font-size: 18px; }
 .update-item p { margin-bottom: 0; color: var(--muted); font-size: 15.5px; }
 .update-item a { display: inline-block; margin-top: 14px; color: var(--navy); font-size: 14.5px; font-weight: 650; text-underline-offset: 3px; }

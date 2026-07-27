@@ -109,6 +109,18 @@ input:focus, textarea:focus, select:focus { outline: 3px solid rgba(7,133,154,.1
 .item-actions .delete { color: var(--danger); }
 .item-actions .delete:hover { border-color: var(--danger); background: #fbeded; }
 
+.stack { display: grid; gap: 22px; align-content: start; }
+.section-item { grid-template-columns: 30px minmax(0, 1fr) auto; }
+.section-item.is-stray { background: #fdf5e4; }
+.section-item.is-stray .item-body p { color: #8a5d00; }
+.item-actions button:disabled { color: #b8ccd3; border-color: #dbe9ed; cursor: default; }
+.item-actions button:disabled:hover { border-color: #dbe9ed; background: var(--white); }
+
+.inline-form { display: flex; gap: 9px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.inline-form input { flex: 1 1 auto; min-width: 0; }
+.inline-form .button { flex: 0 0 auto; min-height: 41px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
 /* The form column stays alongside a long list instead of scrolling away. */
 .form-card { position: sticky; top: 96px; }
 .form-card.is-editing { box-shadow: 0 0 0 2px var(--teal), 0 12px 30px rgba(6,44,60,.07); }
