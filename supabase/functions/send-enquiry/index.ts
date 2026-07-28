@@ -68,7 +68,9 @@ Deno.serve(async (request) => {
 
   if (name.length < 2) return json({ ok: false, error: "Name is required" }, 400);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ ok: false, error: "A valid email is required" }, 400);
-  if (message.length < 10) return json({ ok: false, error: "Message is required" }, 400);
+  // Matches the form's own rule. A longer minimum here would reject a message
+  // the page had already accepted, surfacing as an unexplained send failure.
+  if (message.length < 2) return json({ ok: false, error: "Message is required" }, 400);
 
   const forwarded = request.headers.get("x-forwarded-for") || "";
   const ip = forwarded.split(",")[0].trim() || request.headers.get("x-real-ip") || "";

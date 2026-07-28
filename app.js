@@ -272,6 +272,26 @@
   // "your name and a message" rather than "your name, a message".
   const listify = (items) => items.length < 2 ? (items[0] || "") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 
+  // One dialog serves two entry points. The proposal buttons ask for a document;
+  // the header's Contact Us is general, and arriving there under a sponsorship
+  // heading would read as though we only want to hear from sponsors.
+  const ENQUIRY_MODES = {
+    proposal: {
+      eyebrow: "Sponsorship",
+      title: "Request the proposal",
+      intro: "Tell us where to send it and we will reply, usually within a day.",
+      subject: "Sponsorship proposal request"
+    },
+    contact: {
+      eyebrow: "Contact",
+      title: "Contact us",
+      intro: "Ask us about the project, the team or a partnership. We reply to every message, usually within a day.",
+      subject: "Website enquiry"
+    }
+  };
+  const enquiryMode = (trigger) => ENQUIRY_MODES[trigger?.dataset?.enquiryMode] || ENQUIRY_MODES.proposal;
+  const DEFAULT_SUBJECTS = Object.values(ENQUIRY_MODES).map((mode) => mode.subject);
+
   // Opens the enquiry dialog from any [data-proposal-request] trigger and posts
   // it to the send-enquiry edge function. Every trigger keeps its mailto: href
   // and this only preventDefault()s once the dialog is known to work, so a
@@ -303,6 +323,20 @@
     };
     const bindClosers = (root) => $$("[data-enquiry-close]", root).forEach((button) => button.addEventListener("click", close));
 
+    // Re-queried on each open rather than cached: a successful send replaces the
+    // form's contents, and a stale node reference would throw on the next open.
+    const applyMode = (trigger) => {
+      const mode = enquiryMode(trigger);
+      $("#enquiryEyebrow") && ($("#enquiryEyebrow").textContent = mode.eyebrow);
+      $("#enquiryTitle") && ($("#enquiryTitle").textContent = mode.title);
+      $("#enquiryIntro") && ($("#enquiryIntro").textContent = mode.intro);
+      // Only overwrite a subject the visitor has not written themselves. Any of
+      // the built-in defaults is fair game, since those came from a mode rather
+      // than from them.
+      const field = form.elements.subject;
+      if (field && (!field.value.trim() || DEFAULT_SUBJECTS.includes(field.value.trim()))) field.value = mode.subject;
+    };
+
     $$("[data-proposal-request]").forEach((trigger) => {
       trigger.addEventListener("click", (event) => {
         // Let a modified click through: someone deliberately opening the mailto
@@ -311,6 +345,7 @@
         event.preventDefault();
         opener = trigger;
         setStatus("");
+        applyMode(trigger);
         dialog.showModal();
         form.elements.name?.focus();
       });
@@ -335,7 +370,11 @@
       };
       check(form.elements.name, value("name").length > 1, "your name");
       check(form.elements.email, /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value("email")), "a valid email address");
-      check(form.elements.message, value("message").length > 9, "a message");
+      // Non-empty is the only real requirement. A longer minimum rejected short
+      // but perfectly clear messages while the error still read "add a message",
+      // which is baffling when one is plainly there. Spam is the honeypot's and
+      // the rate limiter's job, not the length check's.
+      check(form.elements.message, value("message").length > 1, "a message");
       return problems;
     };
 
@@ -415,11 +454,12 @@
     $("#contactFallbackBottom").hidden = hasEmail;
     setupEmailCopy(email);
 
-    // Each proposal CTA opens the enquiry dialog. The mailto stays on the href
-    // as the fallback for a browser without <dialog> or a failed script, so it
-    // still points at the configured contact address.
-    const subject = encodeURIComponent(`${site.projectName || "UoSM ARUS I"} sponsorship proposal`);
-    $$("[data-proposal-request]").forEach((link) => { link.href = `mailto:${email}?subject=${subject}`; });
+    // Each CTA opens the enquiry dialog. The mailto stays on the href as the
+    // fallback for a browser without <dialog> or a failed script, carrying the
+    // same subject that trigger would have prefilled in the form.
+    $$("[data-proposal-request]").forEach((link) => {
+      link.href = `mailto:${email}?subject=${encodeURIComponent(enquiryMode(link).subject)}`;
+    });
     setupEnquiry(email);
 
     // content.js stores a date only; the admin writes a full ISO string. Slice to

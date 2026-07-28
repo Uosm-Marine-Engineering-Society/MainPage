@@ -65,7 +65,7 @@
              so every one of these CTAs opens a pre-addressed email instead. The
              href is a working mailto on its own; app.js only swaps in the
              contact address configured in the admin. -->
-        <a class="nav-cta" data-proposal-request href="mailto:uosmmes@gmail.com?subject=ARUS%20I%20sponsorship%20proposal" id="navProposalLabel">Contact Us</a>
+        <a class="nav-cta" data-proposal-request data-enquiry-mode="contact" href="mailto:uosmmes@gmail.com?subject=Website%20enquiry" id="navProposalLabel">Contact Us</a>
       </nav>
     </div>
   </header>
@@ -456,9 +456,12 @@
        it, none of which is worth reimplementing badly. -->
   <dialog class="enquiry" id="enquiryDialog" aria-labelledby="enquiryTitle">
     <form class="enquiry-form" id="enquiryForm" novalidate>
+      <!-- Heading, standfirst and subject are rewritten per trigger by app.js:
+           the proposal buttons and the general Contact Us button share this one
+           form. The markup carries the proposal wording as its default. -->
       <div class="enquiry-head">
         <div>
-          <p class="brief-title">Sponsorship</p>
+          <p class="brief-title" id="enquiryEyebrow">Sponsorship</p>
           <h2 id="enquiryTitle">Request the proposal</h2>
         </div>
         <button class="enquiry-close" type="button" data-enquiry-close aria-label="Close this form">
@@ -466,7 +469,7 @@
         </button>
       </div>
 
-      <p class="enquiry-intro">Tell us where to send it and we will reply, usually within a day.</p>
+      <p class="enquiry-intro" id="enquiryIntro">Tell us where to send it and we will reply, usually within a day.</p>
 
       <div class="enquiry-grid">
         <p class="enquiry-field">
