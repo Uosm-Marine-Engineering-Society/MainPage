@@ -601,6 +601,10 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
 .enquiry-actions { display: flex; flex-wrap: wrap; gap: 11px; margin-top: 20px; }
 .enquiry-actions .button[disabled] { opacity: .6; cursor: progress; }
 .enquiry-fallback { margin: 16px 0 0; padding-top: 15px; border-top: 1px solid var(--line-soft); color: var(--muted); font-size: 13.5px; }
+/* Takes the font of the sentence it sits in, the way the address does in the
+   hero card, rather than the 17px/650 the mark uses when it stands alone. At
+   this size the bold read as a heading dropped into a line of small print. */
+.enquiry-fallback .email-copy { color: var(--navy); font: inherit; }
 
 /* Sent state: the form is replaced by its confirmation rather than sitting
    filled-in behind one, so there is nothing to double-submit. */

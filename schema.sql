@@ -696,7 +696,7 @@ values (
   {
     "projectName":"UoSM ARUS I",
     "clubName":"Marine Engineering Society",
-    "navProposalLabel":"Request proposal",
+    "navProposalLabel":"Contact Us",
     "university":"University of Southampton Malaysia",
     "contactEmail":"",
     "instagram":"",
@@ -735,16 +735,17 @@ where id = 'main' and not (content ? 'analyticsEnabled');
 -- The seed above is `on conflict do nothing`, so a live database keeps whatever
 -- it already had and only these migrations can correct it.
 --
--- The proposal stopped being a public download: the file is gone and every
--- button now opens an email request, so the stored URL points at nothing and
--- "View proposal" describes an action the button no longer performs.
+-- The proposal stopped being a public download: the file is gone and the button
+-- opens the contact form, so the stored URL points at nothing. The label has
+-- since described two superseded actions — the download, then a proposal-only
+-- request — and both are rewritten to the general one the button now performs.
 update public.site_settings
 set content = (content - 'proposalUrl') || case
-  when content ->> 'navProposalLabel' in ('View proposal', 'Download proposal', '') then '{"navProposalLabel":"Request proposal"}'::jsonb
+  when content ->> 'navProposalLabel' in ('View proposal', 'Download proposal', 'Request proposal', '') then '{"navProposalLabel":"Contact Us"}'::jsonb
   else '{}'::jsonb
 end
 where id = 'main'
-  and (content ? 'proposalUrl' or content ->> 'navProposalLabel' in ('View proposal', 'Download proposal', ''));
+  and (content ? 'proposalUrl' or content ->> 'navProposalLabel' in ('View proposal', 'Download proposal', 'Request proposal', ''));
 
 -- Whether the privacy notice is shown and analytics wait for consent. Seeded
 -- false to preserve the behaviour of installations that ran without it; it is a

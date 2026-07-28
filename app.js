@@ -46,18 +46,20 @@
   // Values left in the stored settings blob by an earlier version of a feature.
   // Treating them as unset lets the bundled default win, so a stale database row
   // does not have to be migrated by hand before a deploy is correct.
-  // "View proposal" labelled a PDF download that no longer exists — the button
-  // now opens an email request, so the stored label describes the wrong action.
+  // The nav label has now described two superseded actions: "View proposal" for
+  // a PDF download that no longer exists, then "Request proposal" for a button
+  // that had not yet become general contact. Each is listed so a database still
+  // holding one falls through to the current default.
   const staleSettings = {
-    contactEmail: "replace-with-team-email@example.com",
-    navProposalLabel: "View proposal"
+    contactEmail: ["replace-with-team-email@example.com"],
+    navProposalLabel: ["View proposal", "Download proposal", "Request proposal"]
   };
 
   function siteSettings(saved = {}) {
     const next = { ...(fallback.site || {}) };
     siteKeys.forEach((key) => {
       if (saved[key] !== undefined && saved[key] !== null) {
-        next[key] = saved[key] === staleSettings[key] ? "" : saved[key];
+        next[key] = (staleSettings[key] || []).includes(saved[key]) ? "" : saved[key];
       }
     });
     return next;
@@ -401,7 +403,7 @@
       const key = element.dataset.siteText;
       if (site[key]) element.textContent = site[key];
     });
-    $("#navProposalLabel").textContent = site.navProposalLabel || "Request proposal";
+    $("#navProposalLabel").textContent = site.navProposalLabel || "Contact Us";
     $("#footerText").textContent = site.footerText || "";
     document.title = `${site.clubName || "Marine Engineering Society"} | ${site.projectName || "UoSM ARUS I"}`;
 

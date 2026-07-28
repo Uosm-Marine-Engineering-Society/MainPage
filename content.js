@@ -2,7 +2,7 @@ window.ARUS_CONTENT = {
   site: {
     projectName: "UoSM ARUS I",
     clubName: "Marine Engineering Society",
-    navProposalLabel: "Request proposal",
+    navProposalLabel: "Contact Us",
     university: "University of Southampton Malaysia",
     contactEmail: "uosmmes@gmail.com",
     instagram: "https://www.instagram.com/uosm_mes/",
