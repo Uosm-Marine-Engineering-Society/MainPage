@@ -2,9 +2,8 @@ window.ARUS_CONTENT = {
   site: {
     projectName: "UoSM ARUS I",
     clubName: "Marine Engineering Society",
-    navProposalLabel: "View proposal",
+    navProposalLabel: "Request proposal",
     university: "University of Southampton Malaysia",
-    proposalUrl: "assets/documents/arus-1-sponsorship-proposal-v2.3.pdf",
     contactEmail: "uosmmes@gmail.com",
     instagram: "https://www.instagram.com/uosm_mes/",
     linkedin: "",
@@ -17,6 +16,10 @@ window.ARUS_CONTENT = {
     updatesVisible: 3,
     animations: true,
     analyticsEnabled: true,
+    // Shows the consent card and holds analytics back until the visitor answers.
+    // Defaults off so the site behaves as it did before the toggle existed; it
+    // belongs on wherever analytics run, since those collect personal data.
+    privacyNoticeEnabled: false,
     updatedAt: "2026-07-25"
   },
   people: [
@@ -36,7 +39,7 @@ window.ARUS_CONTENT = {
     { id: "ana-mesbahi", kind: "advisor", name: "Dr. Ana Mesbahi", role: "Academic Advisor", department: "", bio: "", image_url: "", image_path: "", profile_url: "", display_order: 4, active: true }
   ],
   project_updates: [
-    { id: "campaign-target", title: "Campaign target set at RM150,000", summary: "Working target for the Darwin-to-Monaco sponsorship campaign, against a costed engineering scope of RM81,826.", published_at: "2026-07-21", link_url: "", category: "Sponsorship", display_order: 1, active: true },
+    { id: "campaign-target", title: "Sponsorship campaign open", summary: "The costed engineering schedule is complete and the Darwin-to-Monaco campaign target is set. Both are in the proposal, which we send to interested partners on request.", published_at: "2026-07-21", link_url: "", category: "Sponsorship", display_order: 1, active: true },
     { id: "competition-pathway", title: "Darwin qualifier scheduled for September 2027", summary: "We're preparing for the Darwin Asia-Pacific Qualifier. Monaco follows only if qualification is secured.", published_at: "2026-07-17", link_url: "", category: "Competition", display_order: 2, active: true },
     { id: "mes-student-office", title: "Marine Engineering Society registration submitted", summary: "We submitted our registration in July 2026. ARUS I is our founding project.", published_at: "2026-07-17", link_url: "", category: "Society", display_order: 3, active: true }
   ],

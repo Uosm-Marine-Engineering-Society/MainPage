@@ -251,7 +251,7 @@
                   <option value="all">All visits</option>
                   <option value="sponsor">Tagged sponsor links only</option>
                   <option value="engaged">Engaged visits only</option>
-                  <option value="proposal">Opened the proposal</option>
+                  <option value="proposal">Requested the proposal</option>
                 </select>
               </div>
             </div>
@@ -271,7 +271,7 @@
             <article><span>Visits</span><strong id="analyticsVisits">0</strong><small id="analyticsVisitorsNote">0 distinct visitors</small></article>
             <article><span>Read time</span><strong id="analyticsTime">0s</strong><small>Median per visit</small></article>
             <article><span>Sponsor-link visits</span><strong id="analyticsSponsorVisits">0</strong><small id="analyticsSponsorNote">from 0 tagged links</small></article>
-            <article><span>Proposal opens</span><strong id="analyticsProposals">0</strong></article>
+            <article><span>Proposal requests</span><strong id="analyticsProposals">0</strong></article>
             <article><span>Email copies</span><strong id="analyticsCopies">0</strong></article>
             <article><span>Read to the end</span><strong id="analyticsScrolls">0</strong><small>Reached 75% or deeper</small></article>
           </div>
@@ -307,22 +307,27 @@
 
       <section class="panel" id="settingsPanel" role="tabpanel">
         <article class="card">
-          <div class="card-heading"><div><h2>Site settings</h2><p>Global labels, proposal, contact details, footer, and social links.</p></div></div>
+          <div class="card-heading"><div><h2>Site settings</h2><p>Global labels, contact details, footer, and social links. The proposal is sent by email on request, so every proposal button on the website opens a message to the contact address below.</p></div></div>
           <div class="card-body">
             <form id="settingsForm" class="form-grid">
               <div class="field"><label>Flagship project name<input name="projectName"></label></div>
               <div class="field"><label>Society name<input name="clubName"></label></div>
-              <div class="field"><label>Navigation proposal label<input name="navProposalLabel"></label></div>
+              <div class="field"><label>Proposal button label<input name="navProposalLabel"></label></div>
               <div class="field"><label>University<input name="university"></label></div>
               <div class="field"><label>Contact email<input name="contactEmail" type="email" placeholder="team@example.com"></label></div>
-              <div class="field full"><label>Proposal URL<input required name="proposalUrl"></label></div>
               <div class="field full"><label>Footer text<input name="footerText"></label></div>
               <div class="field"><label>Updates shown before “Show all”<input name="updatesVisible" type="number" min="1" max="24" step="1"><small class="field-note">The rest stay one click away on the website.</small></label></div>
               <div class="field"><label>Instagram URL<input name="instagram" type="url" placeholder="https://"></label></div>
               <div class="field"><label>LinkedIn URL<input name="linkedin" type="url" placeholder="https://"></label></div>
               <label class="check full"><input name="animations" type="checkbox" checked>Enable page animations</label>
               <label class="check full"><input name="analyticsEnabled" type="checkbox" checked>Enable visitor analytics</label>
-              <p class="settings-note full">Analytics record the visitor’s IP address, approximate location and network operator, device, browser and system, where they arrived from, which sponsor link they used, the sections they read, scroll depth, clicks, proposal opens, email copies and reading time. Visitors carrying a Global Privacy Control signal are not recorded. Because this stores personal data, the website needs a privacy notice describing it.</p>
+              <!-- .check is a flex row, so the note sits outside the label
+                   rather than becoming a third item beside the checkbox. -->
+              <div class="field full">
+                <label class="check"><input name="privacyNoticeEnabled" type="checkbox">Show the privacy notice and ask before collecting analytics</label>
+                <small class="field-note">Shows the consent card to every new visitor and holds analytics back until they accept. Declining wipes anything an earlier visit stored, and the choice stays reversible from a Privacy link in the footer. Leave this on wherever analytics are enabled — the site records personal data, and this is what asks permission for it.</small>
+              </div>
+              <p class="settings-note full">Analytics record the visitor’s IP address, approximate location and network operator, device, browser and system, where they arrived from, which sponsor link they used, the sections they read, scroll depth, clicks, proposal requests, email copies and reading time. Visitors carrying a Global Privacy Control signal are not recorded. Because this stores personal data, the website needs a privacy notice describing it.</p>
               <div class="form-actions full"><button class="button button-primary" type="submit">Save site settings</button></div>
             </form>
           </div>

@@ -14,10 +14,14 @@
   <meta name="twitter:card" content="summary_large_image">
   <title>Marine Engineering Society | UoSM ARUS I</title>
   <link rel="canonical" href="https://uosm-marine-engineering-society.github.io/MainPage/">
-  <!-- The society mark, knocked out in white on the brand navy. The .ico carries
-       a separately tuned bitmap at 16/32/48/64 because the logo's hairlines
-       vanish at tab size unless they are thickened first. -->
+  <!-- Tab-scale reduction of the crest, kept to the two shapes that survive
+       16px as solid mass: the shield silhouette and the water inside it. The
+       full crest is line art — shrinking it whole is what made the previous
+       icon unreadable in a tab. Navy tile so the mark holds its own edge on a
+       white, grey or dark tab strip. .ico carries 16/32/48/64 for browsers
+       that will not take the SVG. -->
   <link rel="icon" href="assets/favicon.ico" sizes="any">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="stylesheet" href="styles.css">
   <script type="application/ld+json">
@@ -57,7 +61,11 @@
           <a href="#people">Team</a>
           <a href="#partnership">Sponsorship</a>
         </div>
-        <a class="nav-cta" data-proposal-link href="assets/documents/arus-1-sponsorship-proposal-v2.3.pdf" target="_blank" rel="noreferrer" id="navProposalLabel">View proposal</a>
+        <!-- The proposal is no longer a public download: it is sent on request,
+             so every one of these CTAs opens a pre-addressed email instead. The
+             href is a working mailto on its own; app.js only swaps in the
+             contact address configured in the admin. -->
+        <a class="nav-cta" data-proposal-request href="mailto:uosmmes@gmail.com?subject=ARUS%20I%20sponsorship%20proposal" id="navProposalLabel">Request proposal</a>
       </nav>
     </div>
   </header>
@@ -80,7 +88,7 @@
           <h1 data-site-text="clubName">Marine Engineering Society</h1>
           <p class="intro">Our founding project, UoSM ARUS I, is a battery-electric competition boat for the Monaco Energy Boat Challenge World Series.</p>
           <div class="hero-actions">
-            <a class="button button-primary" data-proposal-link href="assets/documents/arus-1-sponsorship-proposal-v2.3.pdf" target="_blank" rel="noreferrer">Sponsorship proposal</a>
+            <a class="button button-primary" data-proposal-request href="mailto:uosmmes@gmail.com?subject=ARUS%20I%20sponsorship%20proposal">Request the proposal</a>
             <a class="button button-quiet" href="#project">ARUS I</a>
           </div>
         </div>
@@ -121,8 +129,8 @@
       </div>
 
       <div class="container metric-grid">
-        <div><span>Costed engineering scope</span><strong>RM81,826</strong></div>
-        <div><span>Provisional campaign target</span><strong>RM150,000</strong></div>
+        <div><span>Class</span><strong>Energy Class</strong></div>
+        <div><span>Programme</span><strong>2026 – 2028</strong></div>
         <div><span>Qualifier</span><strong>Darwin · Sep 2027</strong></div>
         <div><span>World final</span><strong>Monaco 2028 · if qualified</strong></div>
       </div>
@@ -189,67 +197,35 @@
           <div><h3>Controls and safety</h3><p>Pilot interface, telemetry, emergency stop and kill cord.</p></div>
         </div>
 
+        <!-- This was the costed schedule, department by department in ringgit.
+             The figures now live only in the proposal, which goes out on
+             request: the same engineering detail reads as competence here,
+             where a budget total on first contact reads as a price tag. -->
         <div class="subsection reveal">
-          <p class="table-caption">Costed engineering scope</p>
-          <p class="table-hint">Select a department for its line items. Full schedule in the proposal.</p>
+          <p class="table-caption">Engineering scope</p>
+          <p class="table-hint">The systems the team designs, builds and tests. Costed schedule in the proposal.</p>
           <div class="table-wrap">
             <table class="data-table">
-              <caption class="visually-hidden">Engineering budget by department and system, in Malaysian ringgit</caption>
+              <caption class="visually-hidden">Engineering scope by department and system</caption>
               <thead>
                 <tr>
-                  <th scope="col">Scope</th>
-                  <th scope="col" class="num">Budget (RM)</th>
-                  <th scope="col" class="num">Equivalent (US$)</th>
+                  <th scope="col">Department</th>
+                  <th scope="col">Systems</th>
                 </tr>
               </thead>
               <tbody>
-                <tr class="row-group">
-                  <th scope="row">
-                    <button class="row-toggle" type="button" aria-expanded="true" aria-controls="costMechItems">Mechanical department</button>
-                  </th>
-                  <td class="num">23,637</td>
-                  <td class="num">5,909</td>
-                </tr>
-              </tbody>
-              <tbody id="costMechItems" class="cost-items">
-                <tr><td class="row-item">Propulsion</td><td class="num">13,429</td><td class="num"></td></tr>
-                <tr><td class="row-item">Chassis and cockpit</td><td class="num">7,490</td><td class="num"></td></tr>
-                <tr><td class="row-item">Safety equipment</td><td class="num">1,548</td><td class="num"></td></tr>
-                <tr><td class="row-item">Steering</td><td class="num">1,170</td><td class="num"></td></tr>
-              </tbody>
-
-              <tbody>
-                <tr class="row-group">
-                  <th scope="row">
-                    <button class="row-toggle" type="button" aria-expanded="true" aria-controls="costElecItems">Electrical department</button>
-                  </th>
-                  <td class="num">58,189</td>
-                  <td class="num">14,279</td>
-                </tr>
-              </tbody>
-              <tbody id="costElecItems" class="cost-items">
-                <tr><td class="row-item">Battery and charging</td><td class="num">22,826</td><td class="num"></td></tr>
-                <tr><td class="row-item">Propulsion</td><td class="num">12,468</td><td class="num"></td></tr>
-                <tr><td class="row-item">HV distribution and safety</td><td class="num">4,792</td><td class="num"></td></tr>
-                <tr><td class="row-item">Cabling and integration</td><td class="num">4,156</td><td class="num"></td></tr>
-                <tr><td class="row-item">Telemetry and pilot interface</td><td class="num">4,119</td><td class="num"></td></tr>
-                <tr><td class="row-item">LV power and enclosures</td><td class="num">2,445</td><td class="num"></td></tr>
-                <tr><td class="row-item">Cooling</td><td class="num">2,119</td><td class="num"></td></tr>
-                <tr><td class="row-item">Integration contingency</td><td class="num">1,630</td><td class="num"></td></tr>
-                <tr><td class="row-item">Communications and pilot safety</td><td class="num">1,548</td><td class="num"></td></tr>
-                <tr><td class="row-item">Control and sensing</td><td class="num">1,068</td><td class="num"></td></tr>
-                <tr><td class="row-item">Freight and import</td><td class="num">1,018</td><td class="num"></td></tr>
-              </tbody>
-              <tfoot>
                 <tr>
-                  <th scope="row">Total costed engineering scope</th>
-                  <td class="num">81,826</td>
-                  <td class="num">20,188</td>
+                  <th scope="row">Mechanical</th>
+                  <td>Propulsion · Chassis and cockpit · Steering · Safety equipment</td>
                 </tr>
-              </tfoot>
+                <tr>
+                  <th scope="row">Electrical</th>
+                  <td>Battery and charging · Propulsion · HV distribution and safety · LV power and enclosures · Cabling and integration · Telemetry and pilot interface · Control and sensing · Cooling · Communications and pilot safety</td>
+                </tr>
+              </tbody>
             </table>
           </div>
-          <p class="table-note">Hull, logistics, competition entry and branding are not yet costed. The full campaign is planned at RM130,000–RM180,000 pending quotations.</p>
+          <p class="table-note">Hull, logistics, competition entry and branding sit outside the engineering scope. The proposal carries the full costed schedule against every line above.</p>
         </div>
       </div>
     </section>
@@ -402,11 +378,11 @@
             <img src="assets/images/deep-water-940.webp" width="940" height="398" alt="" loading="lazy" decoding="async">
           </div>
           <div>
-            <p class="funding-label">Campaign target</p>
-            <p class="funding-figure">RM150,000</p>
-            <p>Costed engineering scope RM81,826. Full campaign planned at RM130,000–RM180,000 pending quotations.</p>
+            <p class="funding-label">Sponsorship proposal</p>
+            <p class="funding-figure">Sent on request</p>
+            <p>The full costed schedule, partnership benefits and campaign plan, by email. Tell us which level interests you and we will send the detail that matches it.</p>
           </div>
-          <a class="button button-outline" data-proposal-link href="assets/documents/arus-1-sponsorship-proposal-v2.3.pdf" target="_blank" rel="noreferrer">Cost schedule and benefits</a>
+          <a class="button button-outline" data-proposal-request href="mailto:uosmmes@gmail.com?subject=ARUS%20I%20sponsorship%20proposal">Request the proposal</a>
         </div>
 
         <div class="subsection reveal">
@@ -415,20 +391,19 @@
               <thead>
                 <tr>
                   <th scope="col">Partnership level</th>
-                  <th scope="col">Contribution</th>
                   <th scope="col">Partners sought</th>
                   <th scope="col">Recognition and role</th>
                 </tr>
               </thead>
               <tbody>
-                <tr><th scope="row">Flagship</th><td>RM10,000+</td><td>2–3</td><td>Project-wide recognition or named-scope support</td></tr>
-                <tr><th scope="row">Strategic</th><td>RM5,000–9,999</td><td>4–6</td><td>Major subsystem or competition support</td></tr>
-                <tr><th scope="row">Innovation</th><td>RM2,500–4,999</td><td>6–10</td><td>Defined engineering or campaign scope</td></tr>
-                <tr><th scope="row">Supporting</th><td>RM500–2,499</td><td>Open</td><td>Matched component, service or event support</td></tr>
+                <tr><th scope="row">Flagship</th><td>2–3</td><td>Project-wide recognition or named-scope support</td></tr>
+                <tr><th scope="row">Strategic</th><td>4–6</td><td>Major subsystem or competition support</td></tr>
+                <tr><th scope="row">Innovation</th><td>6–10</td><td>Defined engineering or campaign scope</td></tr>
+                <tr><th scope="row">Supporting</th><td>Open</td><td>Matched component, service or event support</td></tr>
               </tbody>
             </table>
           </div>
-          <p class="table-note">Partners receive monthly progress and budget reports, testing reports and a final project report.</p>
+          <p class="table-note">Contribution levels are set out in the proposal. Partners receive monthly progress and budget reports, testing reports and a final project report.</p>
         </div>
 
         <div class="subsection reveal">
@@ -452,7 +427,7 @@
           <p class="contact-email contact-email-fallback" id="contactFallbackBottom">Contact us at <button class="email-copy" type="button" data-email-copy aria-label="Copy email address">uosmmes@gmail.com</button>.</p>
         </div>
         <div class="contact-actions">
-          <a class="button button-outline" data-proposal-link href="assets/documents/arus-1-sponsorship-proposal-v2.3.pdf" target="_blank" rel="noreferrer">Download proposal</a>
+          <a class="button button-outline" data-proposal-request href="mailto:uosmmes@gmail.com?subject=ARUS%20I%20sponsorship%20proposal">Request the proposal</a>
         </div>
       </div>
     </section>

@@ -658,13 +658,13 @@ values (
   {
     "projectName":"UoSM ARUS I",
     "clubName":"Marine Engineering Society",
-    "navProposalLabel":"View proposal",
+    "navProposalLabel":"Request proposal",
     "university":"University of Southampton Malaysia",
-    "proposalUrl":"assets/documents/arus-1-sponsorship-proposal-v2.3.pdf",
     "contactEmail":"",
     "instagram":"",
     "linkedin":"",
     "analyticsEnabled":true,
+    "privacyNoticeEnabled":false,
     "footerText":"Student engineering project · University of Southampton Malaysia"
   }
   $content$::jsonb
@@ -673,16 +673,48 @@ on conflict (id) do nothing;
 
 -- Page copy now lives in index.html. Remove the obsolete editable-section payload
 -- from existing installations and clear the old placeholder contact address.
+--
+-- The 'sections' key was later reused for the team department list, which the
+-- admin edits and app.js reads to order the team groups. That live value is an
+-- array of names, so only the obsolete payload's shape is stripped — deleting an
+-- array here would silently drop the site back to the built-in department order.
 update public.site_settings
-set content = (content - 'sections') || case
+set content = case
+  when jsonb_typeof(content -> 'sections') = 'array' then content
+  else content - 'sections'
+end || case
   when content ->> 'contactEmail' = 'replace-with-team-email@example.com' then '{"contactEmail":""}'::jsonb
   else '{}'::jsonb
 end
-where id = 'main' and (content ? 'sections' or content ->> 'contactEmail' = 'replace-with-team-email@example.com');
+where id = 'main'
+  and ((content ? 'sections' and jsonb_typeof(content -> 'sections') <> 'array')
+       or content ->> 'contactEmail' = 'replace-with-team-email@example.com');
 
 update public.site_settings
 set content = content || '{"analyticsEnabled":true}'::jsonb
 where id = 'main' and not (content ? 'analyticsEnabled');
+
+-- The seed above is `on conflict do nothing`, so a live database keeps whatever
+-- it already had and only these migrations can correct it.
+--
+-- The proposal stopped being a public download: the file is gone and every
+-- button now opens an email request, so the stored URL points at nothing and
+-- "View proposal" describes an action the button no longer performs.
+update public.site_settings
+set content = (content - 'proposalUrl') || case
+  when content ->> 'navProposalLabel' in ('View proposal', 'Download proposal', '') then '{"navProposalLabel":"Request proposal"}'::jsonb
+  else '{}'::jsonb
+end
+where id = 'main'
+  and (content ? 'proposalUrl' or content ->> 'navProposalLabel' in ('View proposal', 'Download proposal', ''));
+
+-- Whether the privacy notice is shown and analytics wait for consent. Seeded
+-- false to preserve the behaviour of installations that ran without it; it is a
+-- checkbox in the admin, and should be on wherever the site collects personal
+-- data, which it does whenever analytics are enabled.
+update public.site_settings
+set content = content || '{"privacyNoticeEnabled":false}'::jsonb
+where id = 'main' and not (content ? 'privacyNoticeEnabled');
 
 -- Align existing seeded records with sponsorship proposal v2.3.
 delete from public.people
@@ -734,10 +766,20 @@ select * from (
 ) as seed(kind, name, role, department, bio, display_order, active)
 where not exists (select 1 from public.people where people.name = seed.name);
 
+-- Ringgit figures came off the public site: the totals now live only in the
+-- proposal, which is sent on request rather than downloaded. Matched against
+-- every title this row has carried, because the seed text has changed twice and
+-- a live database may hold any of them. Without this the insert below sees no
+-- row under the current title and seeds a *second* campaign-target card.
 update public.project_updates
-set title = 'Campaign target: RM150,000',
-    summary = 'The campaign combines financial sponsorship, technical equipment, manufacturing access, testing support and competition logistics.'
-where title = 'Project campaign target set at RM150,000';
+set title = 'Sponsorship campaign open',
+    summary = 'The costed engineering schedule is complete and the campaign target is set. Both are in the proposal, which we send to interested partners on request.'
+where title in (
+  'Project campaign target set at RM150,000',
+  'Provisional campaign target set at RM150,000',
+  'Campaign target set at RM150,000',
+  'Campaign target: RM150,000'
+);
 
 update public.project_updates
 set title = 'Darwin qualifier scheduled for September 2027',
@@ -752,7 +794,7 @@ where title = 'Marine Engineering Society submitted to the Student Office';
 insert into public.project_updates (title, summary, published_at, active)
 select * from (
   values
-    ('Campaign target: RM150,000', 'The campaign combines financial sponsorship, technical equipment, manufacturing access, testing support and competition logistics.', date '2026-07-21', true),
+    ('Sponsorship campaign open', 'The costed engineering schedule is complete and the campaign target is set. Both are in the proposal, which we send to interested partners on request.', date '2026-07-21', true),
     ('Darwin qualifier scheduled for September 2027', 'ARUS I is preparing for the Darwin Asia-Pacific Qualifier. Monaco follows only if qualification is secured.', date '2026-07-17', true),
     ('Marine Engineering Society registration submitted', 'The society is being established as a student platform for projects, workshops, technical talks, industry links and competitions.', date '2026-07-17', true)
 ) as seed(title, summary, published_at, active)

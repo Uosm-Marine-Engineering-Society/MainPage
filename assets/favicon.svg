@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Marine Engineering Society">
+  <!-- Tab-scale reduction of the society crest. The full crest (shield, stag,
+       wave curls, hull) is line art that turns to mush below about 48px, so
+       this keeps only the two shapes that survive 16px as solid mass: the
+       shield silhouette and the water inside it. Brand navy tile, so the mark
+       holds its own edge on a white, grey or dark tab strip. -->
+  <defs>
+    <clipPath id="shield">
+      <path d="M16 10 H48 A4 4 0 0 1 52 14 V33 C52 45.5 44 53 32 57 C20 53 12 45.5 12 33 V14 A4 4 0 0 1 16 10 Z"/>
+    </clipPath>
+  </defs>
+  <rect width="64" height="64" rx="13" fill="#093c50"/>
+  <path d="M16 10 H48 A4 4 0 0 1 52 14 V33 C52 45.5 44 53 32 57 C20 53 12 45.5 12 33 V14 A4 4 0 0 1 16 10 Z" fill="#ffffff"/>
+  <g clip-path="url(#shield)">
+    <path d="M10 36 C16 31 23 31 29 35 C35 39 41 39 47 34.5 C50 32 53 31.5 54 32 V60 H10 Z" fill="#067587"/>
+  </g>
+</svg>

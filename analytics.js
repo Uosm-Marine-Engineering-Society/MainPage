@@ -347,6 +347,10 @@
   function targetFor(link) {
     try {
       const url = new URL(link.href, location.href);
+      // mailto: has no origin and holds the address in pathname, so the generic
+      // branch below would record it as "nullteam@example.com". The subject is
+      // ours rather than the visitor's, so only the address is worth keeping.
+      if (url.protocol === "mailto:") return clean(`mailto:${url.pathname}`, 500);
       const safePath = `${url.pathname}${url.hash}`;
       return clean(url.origin === location.origin ? safePath : `${url.origin}${safePath}`, 500);
     } catch {
@@ -363,7 +367,10 @@
       if (element.matches("a")) {
         const target = targetFor(element);
         enqueue("link_click", { section, label, target });
-        if (element.matches("[data-proposal-link]")) enqueue("proposal_open", { section, label, target });
+        // Still recorded as proposal_open: the event name is pinned by a check
+        // constraint and a rollup column in schema.sql. What it counts changed
+        // from a download to a request, so the admin labels it that way.
+        if (element.matches("[data-proposal-request]")) enqueue("proposal_open", { section, label, target });
         return;
       }
       enqueue("control_click", {

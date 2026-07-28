@@ -4,7 +4,7 @@
   const storageKey = "arus-content-v2";
   const legacyStorageKey = "arus-content-v1";
   const localSessionKey = "arus-admin-local-session-v1";
-  const siteKeys = ["projectName", "clubName", "navProposalLabel", "university", "contactEmail", "proposalUrl", "footerText", "instagram", "linkedin", "sections", "updatesVisible", "animations", "analyticsEnabled", "updatedAt"];
+  const siteKeys = ["projectName", "clubName", "navProposalLabel", "university", "contactEmail", "footerText", "instagram", "linkedin", "sections", "updatesVisible", "animations", "analyticsEnabled", "privacyNoticeEnabled", "updatedAt"];
   const DEFAULT_SECTIONS = ["Executive Team", "Electrical", "Mechanical"];
   // Kept in step with SECTION_ALIASES in app.js: department values written
   // before teams were configurable still group the way they always did.
@@ -549,7 +549,7 @@
       section_view: "Read section",
       link_click: "Clicked link",
       control_click: "Used control",
-      proposal_open: "Opened proposal",
+      proposal_open: "Requested proposal",
       email_copy: "Copied email address",
       scroll_depth: "Scrolled",
       engagement: "Reading"
@@ -1092,6 +1092,7 @@
       updatesVisible: Math.min(24, Math.max(1, Number(text.updatesVisible) || 3)),
       animations: form.elements.animations.checked,
       analyticsEnabled: form.elements.analyticsEnabled.checked,
+      privacyNoticeEnabled: form.elements.privacyNoticeEnabled.checked,
       updatedAt: new Date().toISOString()
     };
     try {

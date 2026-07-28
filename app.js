@@ -5,10 +5,7 @@
   const legacyStorageKey = "arus-content-v1";
   const consentKey = "arus-privacy-consent-v1";
   const consentMaxAge = 365 * 24 * 60 * 60 * 1000;
-  // Temporarily off: flip to true to show the notice and gate analytics behind
-  // it again. All of the consent logic stays in place below either way.
-  const privacyNoticeEnabled = false;
-  const siteKeys = ["projectName", "clubName", "navProposalLabel", "university", "proposalUrl", "contactEmail", "instagram", "linkedin", "footerText", "sections", "updatesVisible", "animations", "analyticsEnabled", "updatedAt"];
+  const siteKeys = ["projectName", "clubName", "navProposalLabel", "university", "contactEmail", "instagram", "linkedin", "footerText", "sections", "updatesVisible", "animations", "analyticsEnabled", "privacyNoticeEnabled", "updatedAt"];
   const DEFAULT_SECTIONS = ["Executive Team", "Electrical", "Mechanical"];
   // Department values written before sections were configurable. Matched as
   // substrings, which is what the original grouping did, so nobody moves.
@@ -46,11 +43,21 @@
     return Number.isNaN(date.getTime()) ? "Project update" : new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "long", year: "numeric" }).format(date);
   };
 
+  // Values left in the stored settings blob by an earlier version of a feature.
+  // Treating them as unset lets the bundled default win, so a stale database row
+  // does not have to be migrated by hand before a deploy is correct.
+  // "View proposal" labelled a PDF download that no longer exists — the button
+  // now opens an email request, so the stored label describes the wrong action.
+  const staleSettings = {
+    contactEmail: "replace-with-team-email@example.com",
+    navProposalLabel: "View proposal"
+  };
+
   function siteSettings(saved = {}) {
     const next = { ...(fallback.site || {}) };
     siteKeys.forEach((key) => {
       if (saved[key] !== undefined && saved[key] !== null) {
-        next[key] = key === "contactEmail" && saved[key] === "replace-with-team-email@example.com" ? "" : saved[key];
+        next[key] = saved[key] === staleSettings[key] ? "" : saved[key];
       }
     });
     return next;
@@ -265,11 +272,9 @@
       const key = element.dataset.siteText;
       if (site[key]) element.textContent = site[key];
     });
-    $("#navProposalLabel").textContent = site.navProposalLabel || "View proposal";
+    $("#navProposalLabel").textContent = site.navProposalLabel || "Request proposal";
     $("#footerText").textContent = site.footerText || "";
     document.title = `${site.clubName || "Marine Engineering Society"} | ${site.projectName || "UoSM ARUS I"}`;
-    const proposalUrl = site.proposalUrl || fallback.site?.proposalUrl;
-    $$("[data-proposal-link]").forEach((link) => { link.href = proposalUrl; });
 
     const configuredEmail = String(site.contactEmail || "").trim();
     const hasEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(configuredEmail);
@@ -278,6 +283,12 @@
     $("#contactFallback").hidden = hasEmail;
     $("#contactFallbackBottom").hidden = hasEmail;
     setupEmailCopy(email);
+
+    // The proposal is sent by hand rather than downloaded, so each CTA opens a
+    // pre-addressed email. The markup already carries a working mailto for the
+    // no-JS case; this only re-points it at the configured contact address.
+    const subject = encodeURIComponent(`${site.projectName || "UoSM ARUS I"} sponsorship proposal`);
+    $$("[data-proposal-request]").forEach((link) => { link.href = `mailto:${email}?subject=${subject}`; });
 
     // content.js stores a date only; the admin writes a full ISO string. Slice to
     // the date part so formatDate's `${value}T00:00:00` never yields Invalid Date.
@@ -527,10 +538,12 @@
     const reopen = $("#privacyReopen");
     if (!notice) return;
 
-    // privacyNoticeEnabled is off: skip straight to analytics, same as before
-    // this notice existed. The notice and footer reopen link stay out of view —
-    // both start `hidden` in index.html and nothing here reveals them.
-    if (!privacyNoticeEnabled) {
+    // Off from the admin: skip straight to analytics, same as before this notice
+    // existed. The notice and the footer reopen link stay out of view — both
+    // start `hidden` in index.html and nothing here reveals them. Compared
+    // against true so an absent setting means off, matching how the site
+    // behaved before the toggle existed.
+    if (site.privacyNoticeEnabled !== true) {
       window.ARUS_ANALYTICS?.init(site);
       return;
     }
