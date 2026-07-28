@@ -772,7 +772,7 @@ where not exists (select 1 from public.people where people.name = seed.name);
 -- a live database may hold any of them. Without this the insert below sees no
 -- row under the current title and seeds a *second* campaign-target card.
 update public.project_updates
-set title = 'Sponsorship campaign open',
+set title = 'Sponsorship campaign open ',
     summary = 'The costed engineering schedule is complete and the campaign target is set. Both are in the proposal, which we send to interested partners on request.'
 where title in (
   'Project campaign target set at RM150,000',
