@@ -536,6 +536,78 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
 .no-motion { scroll-behavior: auto; }
 .no-motion * { transition: none !important; }
 
+/* ---------- Proposal enquiry dialog ---------- */
+
+/* The panel carries the same ruled-head, flat-panel construction as the page
+   sections, so the overlay reads as part of the site rather than a widget
+   dropped on top of it. No photograph in here: it sits over the layout, and
+   anything textured behind this much small type would fight it. */
+.enquiry {
+  width: min(620px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: 0;
+  border-top: 3px solid var(--teal);
+  /* Explicit: on a short screen the panel has to scroll its own content rather
+     than clip the send button off the bottom. */
+  overflow-y: auto;
+  background: var(--paper);
+  color: var(--body);
+}
+.enquiry::backdrop { background: rgba(6, 44, 60, .58); }
+.motion .enquiry[open] { animation: enquiry-in .22s var(--ease) both; }
+.motion .enquiry[open]::backdrop { animation: enquiry-fade .22s var(--ease) both; }
+@keyframes enquiry-in { from { opacity: 0; transform: translateY(10px); } }
+@keyframes enquiry-fade { from { opacity: 0; } }
+
+.enquiry-form { padding: 26px 30px 30px; }
+.enquiry-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 15px; border-bottom: 1px solid var(--line); }
+.enquiry-head h2 { margin: 3px 0 0; font-size: 25px; }
+.enquiry-close { display: grid; flex: none; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--line); background: none; color: var(--navy); cursor: pointer; transition: border-color .2s var(--ease), color .2s var(--ease); }
+.enquiry-close svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.enquiry-close:hover, .enquiry-close:focus-visible { border-color: var(--teal); color: var(--teal); }
+.enquiry-intro { margin: 15px 0 19px; font-size: 15px; }
+
+.enquiry-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
+.enquiry-field { display: grid; gap: 6px; margin: 0; }
+.enquiry-field-wide { grid-column: 1 / -1; }
+.enquiry-field label { color: var(--navy); font-size: 13px; font-weight: 700; letter-spacing: .01em; }
+.enquiry-field .req { color: var(--teal); }
+.enquiry-field input, .enquiry-field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  transition: border-color .2s var(--ease);
+}
+.enquiry-field textarea { resize: vertical; min-height: 108px; }
+.enquiry-field input:focus-visible, .enquiry-field textarea:focus-visible { border-color: var(--teal); outline-offset: 0; }
+/* Flagged only after a failed submit, never while the visitor is still typing. */
+.enquiry-field input[aria-invalid="true"], .enquiry-field textarea[aria-invalid="true"] { border-color: #b03636; }
+
+/* Off-screen rather than display:none — a bot reading the stylesheet skips
+   hidden fields, but a positioned one still looks fillable. */
+.enquiry-trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+.enquiry-status { margin: 16px 0 0; font-size: 14.5px; }
+.enquiry-status:empty { display: none; }
+.enquiry-status.is-error { color: #a32d2d; font-weight: 600; }
+.enquiry-status.is-ok { color: var(--teal); font-weight: 600; }
+
+.enquiry-actions { display: flex; flex-wrap: wrap; gap: 11px; margin-top: 20px; }
+.enquiry-actions .button[disabled] { opacity: .6; cursor: progress; }
+.enquiry-fallback { margin: 16px 0 0; padding-top: 15px; border-top: 1px solid var(--line-soft); color: var(--muted); font-size: 13.5px; }
+
+/* Sent state: the form is replaced by its confirmation rather than sitting
+   filled-in behind one, so there is nothing to double-submit. */
+.enquiry-done { padding: 30px; text-align: left; }
+.enquiry-done h2 { margin: 10px 0 12px; font-size: 25px; }
+.enquiry-done p { margin: 0 0 20px; font-size: 15px; }
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 1040px) {
@@ -555,6 +627,15 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
 @media (max-width: 760px) {
   body { font-size: 16px; }
   .container { width: min(calc(100% - 32px), var(--max)); }
+
+  /* max-width overrides the UA's calc((100% - 6px) - 2em), which otherwise caps
+     the panel short of the width set here and leaves it visibly off-centre. */
+  .enquiry { width: calc(100vw - 24px); max-width: none; max-height: calc(100vh - 24px); }
+  .enquiry-form { padding: 20px 20px 24px; }
+  .enquiry-head h2 { font-size: 21px; }
+  /* One column: side-by-side text inputs get unusably narrow below this. */
+  .enquiry-grid { grid-template-columns: 1fr; }
+  .enquiry-actions .button { flex: 1 1 auto; text-align: center; }
 
   .nav-wrap { min-height: 72px; }
   .brand img { width: 46px; height: 46px; }

@@ -450,6 +450,67 @@
     </div>
   </footer>
 
+  <!-- Proposal enquiry form, opened by every [data-proposal-request] trigger.
+       Those keep a working mailto: href, so a visitor whose JavaScript never
+       runs still gets a way to reach us rather than a dead button.
+
+       A native <dialog> rather than a hand-built overlay: showModal() brings the
+       focus trap, the inert background, Escape-to-close and the ::backdrop with
+       it, none of which is worth reimplementing badly. -->
+  <dialog class="enquiry" id="enquiryDialog" aria-labelledby="enquiryTitle">
+    <form class="enquiry-form" id="enquiryForm" novalidate>
+      <div class="enquiry-head">
+        <div>
+          <p class="brief-title">Sponsorship</p>
+          <h2 id="enquiryTitle">Request the proposal</h2>
+        </div>
+        <button class="enquiry-close" type="button" data-enquiry-close aria-label="Close this form">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6 18 18M18 6 6 18"/></svg>
+        </button>
+      </div>
+
+      <p class="enquiry-intro">Tell us where to send it and we will reply, usually within a day.</p>
+
+      <div class="enquiry-grid">
+        <p class="enquiry-field">
+          <label for="enquiryName">Name <span class="req" aria-hidden="true">*</span></label>
+          <input id="enquiryName" name="name" type="text" required maxlength="120" autocomplete="name">
+        </p>
+        <p class="enquiry-field">
+          <label for="enquiryEmail">Email <span class="req" aria-hidden="true">*</span></label>
+          <input id="enquiryEmail" name="email" type="email" required maxlength="160" autocomplete="email">
+        </p>
+        <p class="enquiry-field">
+          <label for="enquiryOrg">Organisation</label>
+          <input id="enquiryOrg" name="organisation" type="text" maxlength="160" autocomplete="organization">
+        </p>
+        <p class="enquiry-field">
+          <label for="enquirySubject">Subject</label>
+          <input id="enquirySubject" name="subject" type="text" maxlength="160" value="Sponsorship proposal request">
+        </p>
+        <p class="enquiry-field enquiry-field-wide">
+          <label for="enquiryMessage">Message <span class="req" aria-hidden="true">*</span></label>
+          <textarea id="enquiryMessage" name="message" rows="5" required maxlength="4000"></textarea>
+        </p>
+      </div>
+
+      <!-- Bot trap. A visitor never sees or tabs into this, so anything that
+           arrives with it filled in is dropped by the function without a trace. -->
+      <div class="enquiry-trap" aria-hidden="true">
+        <label>Website<input name="website" type="text" tabindex="-1" autocomplete="off"></label>
+      </div>
+
+      <p class="enquiry-status" id="enquiryStatus" role="status" aria-live="polite"></p>
+
+      <div class="enquiry-actions">
+        <button class="button button-primary" type="submit" id="enquirySubmit">Send request</button>
+        <button class="button button-quiet" type="button" data-enquiry-close>Cancel</button>
+      </div>
+
+      <p class="enquiry-fallback">Rather use your own email? <button class="email-copy" type="button" data-email-copy aria-label="Copy email address">uosmmes@gmail.com</button></p>
+    </form>
+  </dialog>
+
   <!-- Consent gate for the visit analytics. It is revealed by app.js and starts
        hidden, so a visitor who never gets the script is never measured either.
        Accept and Decline are deliberately the same size and weight: making the

@@ -307,6 +307,44 @@ create index if not exists analytics_sessions_sponsor_idx on public.analytics_se
 create index if not exists analytics_sessions_visitor_idx on public.analytics_sessions (visitor_id, started_at desc);
 create index if not exists analytics_sessions_ip_hash_idx on public.analytics_sessions (ip_hash, started_at desc);
 
+-- Enquiries from the proposal form on the public site. The send-enquiry edge
+-- function writes here with the service role before it calls Resend, so a
+-- message survives an email provider that is down, rate limited or unconfigured.
+--
+-- No anon or authenticated grant at all: nothing in a browser can read or write
+-- this table, and the service role bypasses RLS. Administrators reach it through
+-- the policies below.
+create table if not exists public.contact_messages (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  name text not null,
+  email text not null,
+  organisation text not null default '',
+  subject text not null default '',
+  message text not null,
+  source_path text not null default '/',
+  -- Salted hash, never the address itself: enough to rate limit a sender
+  -- without keeping their IP alongside a message they wrote.
+  ip_hash text not null default '',
+  user_agent text not null default '',
+  emailed boolean not null default false,
+  handled boolean not null default false
+);
+
+create index if not exists contact_messages_created_at_idx on public.contact_messages (created_at desc);
+create index if not exists contact_messages_ip_hash_idx on public.contact_messages (ip_hash, created_at desc) where ip_hash <> '';
+
+alter table public.contact_messages enable row level security;
+revoke all on table public.contact_messages from anon, authenticated;
+grant select, update, delete on table public.contact_messages to authenticated;
+
+drop policy if exists "Admins read enquiries" on public.contact_messages;
+drop policy if exists "Admins update enquiries" on public.contact_messages;
+drop policy if exists "Admins delete enquiries" on public.contact_messages;
+create policy "Admins read enquiries" on public.contact_messages for select to authenticated using (public.is_admin());
+create policy "Admins update enquiries" on public.contact_messages for update to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "Admins delete enquiries" on public.contact_messages for delete to authenticated using (public.is_admin());
+
 -- Sponsors and contacts that were emailed a tagged link. `code` is the value that
 -- travels in the ?s= parameter and ties a visit back to one outreach email.
 create table if not exists public.outreach_contacts (
@@ -772,7 +810,7 @@ where not exists (select 1 from public.people where people.name = seed.name);
 -- a live database may hold any of them. Without this the insert below sees no
 -- row under the current title and seeds a *second* campaign-target card.
 update public.project_updates
-set title = 'Sponsorship campaign open ',
+set title = 'Sponsorship campaign open',
     summary = 'The costed engineering schedule is complete and the campaign target is set. Both are in the proposal, which we send to interested partners on request.'
 where title in (
   'Project campaign target set at RM150,000',

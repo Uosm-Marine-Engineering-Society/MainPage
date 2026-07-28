@@ -11,7 +11,7 @@
   // substrings, which is what the original grouping did, so nobody moves.
   const SECTION_ALIASES = [["electrical", "Electrical"], ["mechanical", "Mechanical"], ["leadership", "Executive Team"], ["operations", "Executive Team"], ["technical", "Executive Team"]];
   const $ = (selector) => document.querySelector(selector);
-  const $$ = (selector) => [...document.querySelectorAll(selector)];
+  const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const esc = (value = "") => String(value).replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
   const clone = (value) => typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
   const initials = (name = "") => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
@@ -267,6 +267,135 @@
     });
   }
 
+  // "your name and a message" rather than "your name, a message".
+  const listify = (items) => items.length < 2 ? (items[0] || "") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+
+  // Opens the enquiry dialog from any [data-proposal-request] trigger and posts
+  // it to the send-enquiry edge function. Every trigger keeps its mailto: href
+  // and this only preventDefault()s once the dialog is known to work, so a
+  // browser without <dialog> falls through to the mail app as before.
+  function setupEnquiry(email) {
+    const dialog = $("#enquiryDialog");
+    const form = $("#enquiryForm");
+    if (!dialog || !form || typeof dialog.showModal !== "function") return;
+
+    const status = $("#enquiryStatus");
+    const submit = $("#enquirySubmit");
+    const endpoint = `${String(config.url || "").replace(/\/+$/, "")}/functions/v1/send-enquiry`;
+    let opener = null;
+
+    const setStatus = (text, tone = "") => {
+      status.textContent = text;
+      status.classList.toggle("is-error", tone === "error");
+      status.classList.toggle("is-ok", tone === "ok");
+    };
+    // Focus has to land back on the control that opened the dialog, or a
+    // keyboard visitor is dropped at the top of the document. Done here rather
+    // than only from the close event: Escape closes natively without passing
+    // through close(), so both routes call this and whichever runs first wins —
+    // clearing `opener` makes the second a no-op.
+    const restoreFocus = () => { opener?.focus(); opener = null; };
+    const close = () => {
+      if (dialog.open) dialog.close();
+      restoreFocus();
+    };
+    const bindClosers = (root) => $$("[data-enquiry-close]", root).forEach((button) => button.addEventListener("click", close));
+
+    $$("[data-proposal-request]").forEach((trigger) => {
+      trigger.addEventListener("click", (event) => {
+        // Let a modified click through: someone deliberately opening the mailto
+        // in a new tab should still get it.
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        opener = trigger;
+        setStatus("");
+        dialog.showModal();
+        form.elements.name?.focus();
+      });
+    });
+
+    bindClosers(document);
+    // A click on the ::backdrop reports the dialog itself as its target. The
+    // panel has no padding of its own — the form fills it — so nothing inside
+    // can be mistaken for the backdrop.
+    dialog.addEventListener("click", (event) => { if (event.target === dialog) close(); });
+    dialog.addEventListener("close", restoreFocus);
+
+    const value = (name) => String(form.elements[name]?.value || "").trim();
+
+    // Flags fields only on a failed submit. Validating while someone is still
+    // typing their email marks it wrong for every character before the "@".
+    const validate = () => {
+      const problems = [];
+      const check = (field, ok, label) => {
+        field?.setAttribute("aria-invalid", ok ? "false" : "true");
+        if (!ok) problems.push(label);
+      };
+      check(form.elements.name, value("name").length > 1, "your name");
+      check(form.elements.email, /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value("email")), "a valid email address");
+      check(form.elements.message, value("message").length > 9, "a message");
+      return problems;
+    };
+
+    const showSent = (to) => {
+      form.innerHTML = `<div class="enquiry-done">
+        <p class="brief-title">Sent</p>
+        <h2>Thanks — we have your request.</h2>
+        <p>We will reply to <strong>${esc(to)}</strong>, usually within a day.</p>
+        <button class="button button-primary" type="button" data-enquiry-close>Close</button>
+      </div>`;
+      bindClosers(form);
+      form.querySelector("[data-enquiry-close]")?.focus();
+    };
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const problems = validate();
+      if (problems.length) {
+        setStatus(`Please add ${listify(problems)}.`, "error");
+        form.querySelector('[aria-invalid="true"]')?.focus();
+        return;
+      }
+      if (!config.url || !config.publishableKey) {
+        setStatus(`This form is not connected yet — please email ${email} instead.`, "error");
+        return;
+      }
+
+      const label = submit.textContent;
+      submit.disabled = true;
+      submit.textContent = "Sending…";
+      setStatus("");
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: config.publishableKey,
+            Authorization: `Bearer ${config.publishableKey}`
+          },
+          body: JSON.stringify({
+            name: value("name"),
+            email: value("email"),
+            organisation: value("organisation"),
+            subject: value("subject"),
+            message: value("message"),
+            // Left for the function to judge. Keeping the decision server-side
+            // means a bot cannot learn what tripped it from the response.
+            website: value("website"),
+            source_path: `${location.pathname}${location.hash}`
+          })
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok || body.ok !== true) throw new Error(body.error || `HTTP ${response.status}`);
+        showSent(value("email"));
+      } catch {
+        submit.disabled = false;
+        submit.textContent = label;
+        setStatus(`Sorry — that did not send. Please email ${email} instead.`, "error");
+      }
+    });
+  }
+
   function applySite(site) {
     $$("[data-site-text]").forEach((element) => {
       const key = element.dataset.siteText;
@@ -284,11 +413,12 @@
     $("#contactFallbackBottom").hidden = hasEmail;
     setupEmailCopy(email);
 
-    // The proposal is sent by hand rather than downloaded, so each CTA opens a
-    // pre-addressed email. The markup already carries a working mailto for the
-    // no-JS case; this only re-points it at the configured contact address.
+    // Each proposal CTA opens the enquiry dialog. The mailto stays on the href
+    // as the fallback for a browser without <dialog> or a failed script, so it
+    // still points at the configured contact address.
     const subject = encodeURIComponent(`${site.projectName || "UoSM ARUS I"} sponsorship proposal`);
     $$("[data-proposal-request]").forEach((link) => { link.href = `mailto:${email}?subject=${subject}`; });
+    setupEnquiry(email);
 
     // content.js stores a date only; the admin writes a full ISO string. Slice to
     // the date part so formatDate's `${value}T00:00:00` never yields Invalid Date.
