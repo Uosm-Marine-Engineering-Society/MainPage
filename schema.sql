@@ -839,17 +839,21 @@ select * from (
 ) as seed(title, summary, published_at, active)
 where not exists (select 1 from public.project_updates where project_updates.title = seed.title);
 
+-- HydroComp's support is in kind, at a commercial value of US$2,350, which puts
+-- it in the Strategic band. Matched on both names because the row was seeded
+-- before the company's full legal name was used — without the old name a rerun
+-- would leave the original row untouched and seed a second one beside it.
 update public.partners
-set description = 'Supporting the team’s marine engineering and competition work.'
-where name = 'HydroComp' and description = 'Supporting the team as it develops its marine engineering capability and competition pathway.';
+set name = 'HydroComp, Inc.',
+    tier = 'Strategic Partner',
+    description = 'Supporting the team’s marine hydrodynamic and propulsion calculations.',
+    logo_url = 'assets/hydrocomp-logo.png',
+    website_url = 'https://www.hydrocompinc.com'
+where name in ('HydroComp', 'HydroComp, Inc.');
 
-update public.partners
-set logo_url = 'assets/hydrocomp-logo.png'
-where name = 'HydroComp';
-
-insert into public.partners (name, tier, description, logo_url, display_order, active)
-select 'HydroComp', 'Project Supporter', 'Supporting the team’s marine engineering and competition work.', 'assets/hydrocomp-logo.png', 1, true
-where not exists (select 1 from public.partners where partners.name = 'HydroComp');
+insert into public.partners (name, tier, description, logo_url, website_url, display_order, active)
+select 'HydroComp, Inc.', 'Strategic Partner', 'Supporting the team’s marine hydrodynamic and propulsion calculations.', 'assets/hydrocomp-logo.png', 'https://www.hydrocompinc.com', 1, true
+where not exists (select 1 from public.partners where partners.name = 'HydroComp, Inc.');
 
 -- After creating a Supabase Auth user, grant that user access:
 -- insert into public.admins (user_id) values ('YOUR-AUTH-USER-UUID');
