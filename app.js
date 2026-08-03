@@ -192,6 +192,18 @@
     const sections = siteSections(site);
     const team = sortedActive(people.filter((person) => person.kind !== "advisor"));
     const advisors = sortedActive(people.filter((person) => person.kind === "advisor"));
+
+    // The hero's "Members" line follows the same data as this section, so
+    // adding or removing someone in the admin updates both. The markup keeps
+    // a static count as its no-JS fallback.
+    const glance = $("#glanceMembers");
+    if (glance) {
+      const count = (n, noun) => `${n} ${noun}${n === 1 ? "" : "s"}`;
+      const parts = [];
+      if (team.length) parts.push(count(team.length, "student"));
+      if (advisors.length) parts.push(count(advisors.length, "academic advisor"));
+      glance.textContent = parts.join(" · ") || "Team forming";
+    }
     const groups = new Map();
     team.forEach((person) => {
       const department = personDepartment(person, sections);
@@ -615,6 +627,56 @@
   // checked independently so a site setting can never override it.
   const motionAllowed = (enabled) => enabled !== false && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  // The ARUS I viewer stays free until it is needed: the <model-viewer>
+  // library is injected only once the figure nears the viewport, and the
+  // element then lazy-loads the model. The poster image covers the stage until
+  // the model's load event, so a failure anywhere on that path simply leaves
+  // the still render in place. Auto-rotate obeys the same motion rules as
+  // everything else on the page.
+  function setupModelViewer(site) {
+    const stage = $("#renderStage");
+    const viewer = $("#renderViewer");
+    if (!stage || !viewer || !window.customElements) return;
+
+    if (motionAllowed(site.animations !== false)) {
+      viewer.setAttribute("auto-rotate", "");
+      viewer.setAttribute("auto-rotate-delay", "1600");
+      viewer.setAttribute("rotation-per-second", "8deg");
+    }
+
+    // Added here rather than in the markup so a visitor without JavaScript is
+    // never promised an interaction the still image cannot give them; the CSS
+    // additionally holds it back until the model is actually live.
+    const hint = document.createElement("span");
+    hint.className = "viewer-hint";
+    hint.setAttribute("aria-hidden", "true");
+    hint.textContent = "Drag to rotate";
+    stage.appendChild(hint);
+    viewer.addEventListener("load", () => stage.classList.add("model-live"), { once: true });
+    viewer.addEventListener("error", () => hint.remove(), { once: true });
+    stage.addEventListener("pointerdown", () => hint.classList.add("is-done"), { once: true });
+
+    const inject = () => {
+      if (window.customElements.get("model-viewer")) return;
+      const script = document.createElement("script");
+      script.type = "module";
+      script.src = "https://unpkg.com/@google/model-viewer@3.5.0/dist/model-viewer.min.js";
+      document.head.appendChild(script);
+    };
+
+    if ("IntersectionObserver" in window) {
+      const io = new IntersectionObserver((entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          io.disconnect();
+          inject();
+        }
+      }, { rootMargin: "700px 0px" });
+      io.observe(stage);
+    } else {
+      inject();
+    }
+  }
+
   // The hero video is deliberately opted into with JS. That leaves its poster
   // in place for no-JS, reduced-motion and phone-sized views, and prevents a
   // multi-megabyte background from being fetched when it will not be shown.
@@ -814,6 +876,7 @@
     setupUpdateToggle();
     setupMotion(site.animations !== false);
     setupHeroVideo(site.animations !== false);
+    setupModelViewer(site);
     if (motionAllowed(site.animations !== false)) setupParallax();
   }
 

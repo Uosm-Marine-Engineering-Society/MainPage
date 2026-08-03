@@ -216,16 +216,101 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
 
 .render-frame { margin: 0; }
 .render-frame img { width: 100%; border: 1px solid var(--line); }
-.render-placeholder { display: grid; place-items: center; aspect-ratio: 16 / 10; border: 1px solid var(--line); background: var(--pale); }
-.render-placeholder span { color: var(--muted); font-size: 11.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
 .render-frame figcaption { padding-top: 12px; color: var(--muted); font-size: 13.5px; }
+
+/* ---------- ARUS I model viewer ---------- */
+
+/* The stage keeps the placeholder's footprint: bordered 16:10 pale panel. The
+   poster paints immediately; the oversized, cropped <model-viewer> canvas
+   underneath takes over when app.js hears its load event. Without JavaScript
+   the unknown element renders nothing and this is simply a framed still. */
+.render-stage {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, #f7fbfc 0%, var(--pale) 58%, var(--pale-deep) 100%);
+}
+.render-stage .render-poster {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  object-fit: contain;
+  pointer-events: none;
+  transition: opacity .5s var(--ease);
+}
+.render-stage.model-live .render-poster { opacity: 0; }
+
+/* Oversized so the boat fills the visible crop the way the poster does;
+   disable-zoom pins model-viewer to its rotation-safe framing, so nothing can
+   swing outside the stage. Clipped regions take no pointer events, so the
+   interactive surface stays exactly the visible panel. */
+.render-viewer {
+  position: absolute;
+  top: -17.5%; left: -17.5%;
+  display: block;
+  width: 135%;
+  height: 135%;
+  --poster-color: transparent;
+}
+
+/* "Drag to rotate" chip, added by app.js so a no-script visitor is never
+   promised an interaction the page cannot give them. */
+.viewer-hint {
+  position: absolute;
+  z-index: 2;
+  bottom: 14px; left: 50%;
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(252, 253, 253, .92);
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: opacity .45s var(--ease);
+}
+.render-stage.model-live .viewer-hint { opacity: 1; }
+.render-stage.model-live .viewer-hint.is-done { opacity: 0; }
 
 .project-brief { border-top: 3px solid var(--teal); background: rgba(238, 246, 248, .96); }
 .project-brief .brief-title { margin: 0; padding: 18px 22px 12px; }
 .project-brief dl { margin: 0; }
-.project-brief dl > div { padding: 13px 22px; border-top: 1px solid var(--line); }
+.project-brief dl > div { position: relative; padding: 13px 22px; border-top: 1px solid var(--line); }
 .project-brief dt { margin-bottom: 3px; color: var(--muted); font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .project-brief dd { margin: 0; color: var(--navy); font-size: 16px; font-weight: 650; line-height: 1.3; }
+
+/* At-a-glance rows that carry a link: the anchor's ::after stretches over the
+   whole row, and a small down arrow appears on hover to say where a click
+   goes — down the page to the section with the full story. */
+.project-brief dt a { color: inherit; text-decoration: none; }
+.project-brief dt a::after { position: absolute; inset: 0; content: ""; }
+.project-brief dl > div:has(dt a) { transition: background-color .2s var(--ease); }
+.project-brief dl > div:has(dt a):hover,
+.project-brief dl > div:has(dt a):focus-within { background: rgba(255, 255, 255, .72); }
+.project-brief dl > div:has(dt a):hover dt,
+.project-brief dl > div:has(dt a):focus-within dt { color: var(--teal); }
+.project-brief dl > div:has(dt a)::after {
+  position: absolute;
+  top: 50%; right: 20px;
+  margin-top: -9px;
+  color: var(--teal);
+  content: "↓";
+  font-size: 14px;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity .2s var(--ease), translate .25s var(--ease);
+  translate: 0 -4px;
+}
+.project-brief dl > div:has(dt a):hover::after,
+.project-brief dl > div:has(dt a):focus-within::after { opacity: 1; translate: 0 0; }
 
 /* ---------- Metric band ---------- */
 

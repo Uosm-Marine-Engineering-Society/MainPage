@@ -96,11 +96,16 @@
         <div class="hero-side">
           <aside class="project-brief reveal" aria-label="Society at a glance">
             <p class="brief-title">At a glance</p>
+            <!-- Each row is a full-row link down to the section that tells the
+                 rest of that story; the stretched ::after on the anchor makes
+                 the whole row the target. The members line is rewritten by
+                 renderPeople() from the same data that fills the team section,
+                 so the count follows the admin page instead of this markup. -->
             <dl>
-              <div><dt>Status</dt><dd>Research, rules review and concept selection</dd></div>
-              <div><dt>Members</dt><dd>10 students · 4 academic advisors</dd></div>
-              <div><dt>Founding project</dt><dd>UoSM ARUS I</dd></div>
-              <div><dt>Competition</dt><dd>Darwin qualifier · September 2027</dd></div>
+              <div><dt><a href="#roadmap" aria-label="Status — see the delivery schedule">Status</a></dt><dd>Research, rules review and concept selection</dd></div>
+              <div><dt><a href="#people" aria-label="Members — meet the team">Members</a></dt><dd id="glanceMembers">10 students · 4 academic advisors</dd></div>
+              <div><dt><a href="#project" aria-label="Founding project — about UoSM ARUS I">Founding project</a></dt><dd>UoSM ARUS I</dd></div>
+              <div><dt><a href="#roadmap" aria-label="Competition — see the delivery schedule">Competition</a></dt><dd>Darwin qualifier · September 2027</dd></div>
             </dl>
           </aside>
 
@@ -146,13 +151,38 @@
 
         <div class="project-intro">
           <figure class="render-frame reveal">
-            <!-- COCKPIT RENDER
-                 Drop the image in by replacing the placeholder <div> below with:
-                 <img src="assets/images/arus-cockpit-render.webp" width="1600" height="1000"
-                      alt="ARUS I cockpit and control layout" loading="lazy">
-                 Use a 16:10 image so the reserved space does not shift. -->
-            <div class="render-placeholder"><span>Cockpit render</span></div>
-            <figcaption>Preliminary draft of cockpit and control layout.</figcaption>
+            <!-- Interactive model of the ARUS I concept, exported from the
+                 team's Blender render (Draco-compressed GLB, WebP textures,
+                 baked livery). The poster still paints first and app.js fades
+                 it out when the model reports load, so without JavaScript or
+                 WebGL this is simply a framed image; the viewer library itself
+                 is only injected once the figure nears the viewport. The
+                 camera-orbit matches the poster's camera, so the swap from
+                 still to model does not jump.
+
+                 The stage crops an oversized <model-viewer> canvas: disable-zoom
+                 is the only way to keep the mouse wheel scrolling the page, but
+                 it also locks the camera to model-viewer's generous
+                 rotation-safe framing, so the enlarge-and-crop is what lets the
+                 boat fill the frame without ever clipping while it turns. -->
+            <div class="render-stage" id="renderStage">
+              <img class="render-poster" src="assets/images/arus-i-poster.webp" width="1600" height="1000"
+                   alt="Render of the ARUS I concept catamaran" loading="lazy" decoding="async">
+              <model-viewer class="render-viewer" id="renderViewer"
+                  src="assets/arus-i.glb"
+                  alt="Interactive 3D model of the ARUS I concept: a twin-hull catamaran with a central cockpit, solar rear cover and outboard drive"
+                  loading="lazy"
+                  camera-controls disable-zoom disable-pan disable-tap
+                  interaction-prompt="none"
+                  camera-orbit="-54.2deg 70.4deg auto"
+                  min-camera-orbit="auto 45deg auto"
+                  max-camera-orbit="auto 92deg auto"
+                  shadow-intensity="0.8" shadow-softness="0.85"
+                  tone-mapping="neutral"
+                  touch-action="pan-y">
+              </model-viewer>
+            </div>
+            <figcaption>Preliminary ARUS I concept — hull platform, cockpit and drive layout.</figcaption>
           </figure>
 
           <aside class="project-brief reveal" aria-label="Project brief">

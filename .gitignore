@@ -1,2 +1,8 @@
 .DS_Store
 _site/
+
+# 3D source files for the ARUS I viewer. The site ships the compressed
+# assets/arus-i.glb built from these; the originals are far over GitHub's
+# 100 MB file limit and belong in the team's file storage, not the repo.
+Render.blend
+Render.stl
