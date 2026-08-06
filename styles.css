@@ -250,10 +250,10 @@ h3 { margin-bottom: 7px; font-size: 20px; letter-spacing: -.015em; }
    interactive surface stays exactly the visible panel. */
 .render-viewer {
   position: absolute;
-  top: -17.5%; left: -17.5%;
+  top: -30%; left: -30%;
   display: block;
-  width: 135%;
-  height: 135%;
+  width: 160%;
+  height: 160%;
   --poster-color: transparent;
 }
 

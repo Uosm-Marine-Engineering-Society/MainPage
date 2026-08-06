@@ -151,9 +151,9 @@
 
         <div class="project-intro">
           <figure class="render-frame reveal">
-            <!-- Interactive model of the ARUS I concept, exported from the
-                 team's Blender render (Draco-compressed GLB, WebP textures,
-                 baked livery). The poster still paints first and app.js fades
+            <!-- Interactive model of the earlier ARUS I concept, isolated from
+                 the archived Blender collection (Draco-compressed GLB with
+                 lightweight presentation materials). The poster paints first and app.js fades
                  it out when the model reports load, so without JavaScript or
                  WebGL this is simply a framed image; the viewer library itself
                  is only injected once the figure nears the viewport. The
@@ -171,11 +171,11 @@
                  starts as the reader approaches rather than after they arrive,
                  and never at all for someone who stops higher up the page. -->
             <div class="render-stage" id="renderStage">
-              <img class="render-poster" src="assets/images/arus-i-poster.webp" width="1600" height="1000"
-                   alt="Render of the ARUS I concept catamaran" loading="lazy" decoding="async">
+              <img class="render-poster" src="assets/images/arus-i-poster.webp?v=20260806-old-concept" width="1600" height="1000"
+                   alt="Render of the earlier ARUS I concept catamaran" loading="lazy" decoding="async">
               <model-viewer class="render-viewer" id="renderViewer"
-                  src="assets/arus-i.glb"
-                  alt="Interactive 3D model of the ARUS I concept: a twin-hull catamaran with a central cockpit, solar rear cover and outboard drive"
+                  src="assets/arus-i.glb?v=20260806-old-concept"
+                  alt="Interactive 3D model of the earlier ARUS I concept: a twin-hull catamaran with a central cockpit and outboard drive"
                   loading="eager"
                   camera-controls disable-zoom disable-pan disable-tap
                   interaction-prompt="none"
@@ -187,7 +187,7 @@
                   touch-action="pan-y">
               </model-viewer>
             </div>
-            <figcaption>Preliminary ARUS I concept — hull platform, cockpit and drive layout.</figcaption>
+            <figcaption>Earlier ARUS I concept — preliminary hull platform, cockpit and drive layout.</figcaption>
           </figure>
 
           <aside class="project-brief reveal" aria-label="Project brief">

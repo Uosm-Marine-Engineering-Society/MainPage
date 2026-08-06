@@ -652,9 +652,16 @@
     hint.setAttribute("aria-hidden", "true");
     hint.textContent = "Drag to rotate";
     stage.appendChild(hint);
-    viewer.addEventListener("load", () => stage.classList.add("model-live"), { once: true });
+    const revealModel = () => stage.classList.add("model-live");
+    viewer.addEventListener("load", revealModel, { once: true });
     viewer.addEventListener("error", () => hint.remove(), { once: true });
     stage.addEventListener("pointerdown", () => hint.classList.add("is-done"), { once: true });
+
+    // A warm cache can upgrade and load <model-viewer> before this setup work
+    // finishes. Cover that race so the ready model never stays behind its poster.
+    window.customElements.whenDefined("model-viewer").then(() => {
+      if (viewer.loaded) revealModel();
+    });
 
     const inject = () => {
       if (window.customElements.get("model-viewer")) return;
